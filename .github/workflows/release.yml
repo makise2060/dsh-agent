@@ -30,6 +30,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute version
+        id: vars
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -100,43 +109,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag: ${{ inputs.tag || github.ref_name }}
-          name: 'DSH Agent ${{ inputs.tag || github.ref_name }}'
-          body: |
-            # DSH Agent ${{ inputs.tag || github.ref_name }}
-
-            > DeepSeek Harness 桌面客户端 — 一键启动 `dsh web`，集成环境自检、版本更新、插件市场。
-
-            ---
-
-            ### ⬇️ Download / 下载链接
-
-            <div align="left">
-
-            | **OS / 系统** | **Requirements / 版本要求** | **Direct Links / 点击直链下载** |
-            |:---:|:---|:---|
-            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" alt="Windows" width="28"/> | Windows 10+<br>*(WebView2 Runtime)* | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/DSH-Agent_${{ inputs.tag || github.ref_name }}_x64-setup.exe"><img src="https://img.shields.io/badge/Setup-x64-0078D7?logo=windows&logoColor=white&style=flat-square&labelColor=222222"></a> |
-            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg" alt="macOS" width="28"/> | macOS 12.0+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/DSH%20Agent_${{ inputs.tag || github.ref_name }}_aarch64.dmg"><img src="https://img.shields.io/badge/DMG-Apple%20Silicon-000000?logo=apple&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/DSH%20Agent_${{ inputs.tag || github.ref_name }}_x64.dmg"><img src="https://img.shields.io/badge/DMG-Intel%20x64-00A9E0?logo=apple&logoColor=white&style=flat-square&labelColor=222222"></a> |
-            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux" width="28"/> | Linux Kernel 5.4+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/dsh-agent_${{ inputs.tag || github.ref_name }}_amd64.AppImage"><img src="https://img.shields.io/badge/AppImage-x64-f84e29?logo=linux&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/dsh-agent_${{ inputs.tag || github.ref_name }}_amd64.deb"><img src="https://img.shields.io/badge/DEB-x64-A81D33?logo=debian&logoColor=white&style=flat-square&labelColor=222222"></a> |
-
-            </div>
-
-            ---
-
-            ### 📋 前置要求
-
-            - **Node.js ≥ 22**（dsh 运行时依赖）
-            - **dsh**：`npm install -g @deepseek-ai/dsh`（App 内也可一键安装）
-
-            > Windows 用户需安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)（Win11 已内置）。
-
-            ### 🐛 Feedback / 问题反馈
-
-            **Bug Report**: [Click Here](https://github.com/makise2060/dsh-agent/issues/new)
+          tag: ${{ steps.vars.outputs.tag }}
           draft: false
           prerelease: false
           files: |
-            src-tauri/DSH Agent_*-setup.exe
+            src-tauri/DSH-Agent_*-setup.exe
 
       # 非 Windows 平台继续用 tauri-action
       - name: Build and release (non-Windows)
@@ -145,10 +122,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.tag || github.ref_name }}
-          releaseName: 'DSH Agent ${{ inputs.tag || github.ref_name }}'
+          tagName: ${{ steps.vars.outputs.tag }}
+          releaseName: 'DSH Agent ${{ steps.vars.outputs.tag }}'
           releaseBody: |
-            # DSH Agent ${{ inputs.tag || github.ref_name }}
+            # DSH Agent ${{ steps.vars.outputs.tag }}
 
             > DeepSeek Harness 桌面客户端 — 一键启动 `dsh web`，集成环境自检、版本更新、插件市场。
 
@@ -160,9 +137,9 @@ jobs:
 
             | **OS / 系统** | **Requirements / 版本要求** | **Direct Links / 点击直链下载** |
             |:---:|:---|:---|
-            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" alt="Windows" width="28"/> | Windows 10+<br>*(WebView2 Runtime)* | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/DSH-Agent_${{ inputs.tag || github.ref_name }}_x64-setup.exe"><img src="https://img.shields.io/badge/Setup-x64-0078D7?logo=windows&logoColor=white&style=flat-square&labelColor=222222"></a> |
-            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg" alt="macOS" width="28"/> | macOS 12.0+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/DSH%20Agent_${{ inputs.tag || github.ref_name }}_aarch64.dmg"><img src="https://img.shields.io/badge/DMG-Apple%20Silicon-000000?logo=apple&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/DSH%20Agent_${{ inputs.tag || github.ref_name }}_x64.dmg"><img src="https://img.shields.io/badge/DMG-Intel%20x64-00A9E0?logo=apple&logoColor=white&style=flat-square&labelColor=222222"></a> |
-            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux" width="28"/> | Linux Kernel 5.4+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/dsh-agent_${{ inputs.tag || github.ref_name }}_amd64.AppImage"><img src="https://img.shields.io/badge/AppImage-x64-f84e29?logo=linux&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ inputs.tag || github.ref_name }}/dsh-agent_${{ inputs.tag || github.ref_name }}_amd64.deb"><img src="https://img.shields.io/badge/DEB-x64-A81D33?logo=debian&logoColor=white&style=flat-square&labelColor=222222"></a> |
+            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" alt="Windows" width="28"/> | Windows 10+<br>*(WebView2 Runtime)* | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH-Agent_${{ steps.vars.outputs.version }}_x64-setup.exe"><img src="https://img.shields.io/badge/Setup-x64-0078D7?logo=windows&logoColor=white&style=flat-square&labelColor=222222"></a> |
+            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg" alt="macOS" width="28"/> | macOS 12.0+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent_${{ steps.vars.outputs.version }}_aarch64.dmg"><img src="https://img.shields.io/badge/DMG-Apple%20Silicon-000000?logo=apple&logoColor=white&style=flat-square&labelColor=222222"></a> |
+            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux" width="28"/> | Linux Kernel 5.4+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent_${{ steps.vars.outputs.version }}_amd64.AppImage"><img src="https://img.shields.io/badge/AppImage-x64-f84e29?logo=linux&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent_${{ steps.vars.outputs.version }}_amd64.deb"><img src="https://img.shields.io/badge/DEB-x64-A81D33?logo=debian&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent-${{ steps.vars.outputs.version }}-1.x86_64.rpm"><img src="https://img.shields.io/badge/RPM-x64-red?logo=fedora&logoColor=white&style=flat-square&labelColor=222222"></a> |
 
             </div>
 
