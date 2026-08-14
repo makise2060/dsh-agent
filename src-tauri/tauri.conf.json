@@ -37,15 +37,7 @@
     ],
     "windows": {
       "webviewInstallMode": {
-        "type": "downloadBootstrapper"
-      },
-      "nsis": {
-        "installMode": "perMachine",
-        "displayLanguageSelector": true,
-        "languages": ["SimpChinese", "English"],
-        "headerImage": "icons/header.bmp",
-        "sidebarImage": "icons/sidebar.bmp",
-        "installerIcon": "icons/icon.ico"
+        "type": "embedBootstrapper"
       }
     }
   },

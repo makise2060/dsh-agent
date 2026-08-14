@@ -11,6 +11,9 @@ dist/
 # Tauri
 src-tauri/target/
 
+# Inno Setup output
+src-tauri/DSH Agent_*-setup.exe
+
 # IDE
 .vscode/
 .idea/
