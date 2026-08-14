@@ -90,6 +90,10 @@ export function onProcessStateChanged(cb: (state: ProcessState) => void): Promis
   return listen<ProcessState>('process-state-changed', (e) => cb(e.payload));
 }
 
+export function onDshStdout(cb: (line: string) => void): Promise<UnlistenFn> {
+  return listen<string>('dsh-stdout', (e) => cb(e.payload));
+}
+
 export function onInstallProgress(
   cb: (p: { stage: string; message: string; percent?: number }) => void
 ): Promise<UnlistenFn> {

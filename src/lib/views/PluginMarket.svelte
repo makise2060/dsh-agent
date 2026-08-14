@@ -98,20 +98,20 @@
   }
 </script>
 
-<div class="flex h-full flex-col bg-gray-50">
+<div class="flex h-full flex-col bg-gray-50 dark:bg-gray-900 transition-colors">
   <!-- Header -->
-  <div class="flex items-center gap-3 border-b border-gray-200 px-4 py-2">
+  <div class="flex items-center gap-3 border-b border-gray-200 dark:border-gray-700 px-4 py-2 transition-colors">
     <input
       type="text"
       placeholder="搜索插件..."
       bind:value={searchQuery}
       on:keydown={(e) => e.key === 'Enter' && handleSearch()}
-      class="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs focus:border-brand-500 focus:outline-none"
+      class="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 focus:border-brand-500 focus:outline-none transition-colors"
     />
     <select
       bind:value={sortBy}
       on:change={handleSortChange}
-      class="rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+      class="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 transition-colors"
     >
       <option value="stars">Stars</option>
       <option value="updated">最近更新</option>
@@ -132,26 +132,26 @@
         <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent"></div>
       </div>
     {:else if $marketRepos.length === 0}
-      <div class="py-12 text-center text-sm text-gray-400">暂无插件</div>
+      <div class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">暂无插件</div>
     {:else}
       <div class="mx-auto max-w-3xl space-y-3">
-        <p class="text-xs text-gray-400">共 {totalCount} 个插件</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500">共 {totalCount} 个插件</p>
         {#each $marketRepos as repo}
-          <div class="rounded-lg border border-gray-200 bg-white p-4">
+          <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-colors">
             <div class="flex items-start justify-between">
               <div class="flex-1">
                 <a
                   href={repo.html_url}
                   target="_blank"
                   rel="noopener"
-                  class="text-sm font-medium text-brand-600 hover:underline"
+                  class="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
                 >
                   {repo.full_name}
                 </a>
-                <p class="mt-1 text-xs text-gray-500">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {repo.description || '无描述'}
                 </p>
-                <div class="mt-2 flex items-center gap-3 text-xs text-gray-400">
+                <div class="mt-2 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                   <span>⭐ {repo.stargazers_count}</span>
                   <span>{new Date(repo.updated_at).toLocaleDateString()}</span>
                   {#if repo.license}<span>{repo.license}</span>{/if}
@@ -159,10 +159,10 @@
               </div>
               <div>
                 {#if $installingPackage === repo.full_name}
-                  <span class="text-xs text-gray-400">安装中...</span>
+                  <span class="text-xs text-gray-400 dark:text-gray-500">安装中...</span>
                 {:else if isInstalled(repo)}
                   <button
-                    class="rounded-md border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                    class="rounded-md border border-red-300 dark:border-red-700 px-3 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                     on:click={() => handleRemove(repo)}
                   >
                     移除
@@ -181,7 +181,7 @@
         {/each}
         {#if hasMore}
           <button
-            class="w-full rounded-md border border-gray-300 bg-white py-2 text-xs text-gray-600 hover:bg-gray-50"
+            class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             on:click={handleLoadMore}
           >
             加载更多

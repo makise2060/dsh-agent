@@ -47,10 +47,10 @@
 {#if loading}
   <LoadingScreen />
 {:else if error}
-  <div class="flex h-full flex-col items-center justify-center gap-4 bg-gray-50 p-8">
-    <div class="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-      <p class="text-sm font-medium text-red-700">dsh 启动失败</p>
-      <p class="mt-2 max-w-md text-xs text-red-500">{error}</p>
+  <div class="flex h-full flex-col items-center justify-center gap-4 bg-gray-50 dark:bg-gray-900 p-8">
+    <div class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-6 text-center">
+      <p class="text-sm font-medium text-red-700 dark:text-red-400">dsh 启动失败</p>
+      <p class="mt-2 max-w-md text-xs text-red-500 dark:text-red-400">{error}</p>
     </div>
     <button
       class="rounded-md bg-brand-600 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700"

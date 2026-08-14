@@ -107,6 +107,8 @@ pub async fn start_dsh(
             match lines.next_line().await {
                 Ok(Some(line)) => {
                     log::info!("dsh stdout: {}", line);
+                    // Emit stdout line to frontend for real-time display
+                    let _ = app.emit("dsh-stdout", &line);
                     if let Some(caps) = re.captures(&line) {
                         let port: u16 = caps[1]
                             .parse()

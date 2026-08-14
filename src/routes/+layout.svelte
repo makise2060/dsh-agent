@@ -6,12 +6,18 @@
   import VersionPanel from '$lib/views/VersionPanel.svelte';
   import PluginMarket from '$lib/views/PluginMarket.svelte';
   import { currentRoute } from '$lib/stores/app';
+  import { theme } from '$lib/stores/theme';
+  import { onMount } from 'svelte';
+
+  onMount(() => {
+    theme.init();
+  });
 
   // For Tauri static SPA, we use client-side routing, not SvelteKit's router
   $: route = $currentRoute;
 </script>
 
-<div class="flex h-screen flex-col">
+<div class="flex h-screen flex-col bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors">
   <TopNav />
   <main class="flex-1 overflow-hidden relative">
     <!-- 所有视图同时挂载，通过 display 切换可见性，避免重新挂载导致 iframe 重建/闪屏 -->
