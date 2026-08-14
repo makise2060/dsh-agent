@@ -1,6 +1,6 @@
+use crate::cmd_ext::hidden_command;
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
 
 #[derive(serde::Serialize, Clone)]
 pub struct InstallProgress {
@@ -21,7 +21,7 @@ pub async fn install_dsh(app: AppHandle) -> Result<(), String> {
         },
     );
 
-    let mut child = Command::new("npm")
+    let mut child = hidden_command("npm")
         .args(["install", "-g", "@deepseek-ai/dsh@latest"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

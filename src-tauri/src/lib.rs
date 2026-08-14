@@ -1,3 +1,4 @@
+mod cmd_ext;
 mod env;
 mod installer;
 mod plugins;
@@ -25,8 +26,10 @@ pub fn run() {
                     if pid > 0 {
                         #[cfg(target_os = "windows")]
                         {
+                            use std::os::windows::process::CommandExt;
                             std::process::Command::new("taskkill")
                                 .args(["/pid", &pid.to_string(), "/T", "/F"])
+                                .creation_flags(0x08000000) // CREATE_NO_WINDOW
                                 .spawn()
                                 .ok();
                         }

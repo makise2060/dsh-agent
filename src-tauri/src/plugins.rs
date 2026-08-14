@@ -1,7 +1,7 @@
+use crate::cmd_ext::hidden_command;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
 
 use crate::env::get_dsh_home;
 
@@ -170,7 +170,7 @@ pub async fn install_plugin(app: AppHandle, package_name: String) -> Result<(), 
         },
     );
 
-    let mut child = Command::new("dsh")
+    let mut child = hidden_command("dsh")
         .args(["plugin", "--profile", "web", "add", &pkg])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -248,7 +248,7 @@ pub async fn remove_plugin(app: AppHandle, package_name: String) -> Result<(), S
         },
     );
 
-    let output = Command::new("dsh")
+    let output = hidden_command("dsh")
         .args(["plugin", "--profile", "web", "remove", &pkg])
         .output()
         .await

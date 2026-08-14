@@ -1,8 +1,8 @@
+use crate::cmd_ext::hidden_command;
 use crate::state::{AppState, ProcessState};
 use regex::Regex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
-use tokio::process::Command;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::time::timeout;
 
@@ -23,7 +23,7 @@ async fn get_state(state: &State<'_, AppState>) -> ProcessState {
 
 #[cfg(target_os = "windows")]
 async fn kill_process_tree(pid: u32) -> Result<(), String> {
-    Command::new("taskkill")
+    hidden_command("taskkill")
         .args(["/pid", &pid.to_string(), "/T", "/F"])
         .output()
         .await
@@ -34,14 +34,14 @@ async fn kill_process_tree(pid: u32) -> Result<(), String> {
 #[cfg(not(target_os = "windows"))]
 async fn kill_process_tree(pid: u32) -> Result<(), String> {
     // Try SIGTERM first
-    Command::new("kill")
+    hidden_command("kill")
         .args(["-TERM", &pid.to_string()])
         .output()
         .await
         .map_err(|e| e.to_string())?;
     tokio::time::sleep(Duration::from_secs(3)).await;
     // Force kill if still alive
-    Command::new("kill")
+    hidden_command("kill")
         .args(["-KILL", &pid.to_string()])
         .output()
         .await
@@ -70,7 +70,7 @@ pub async fn start_dsh(
     update_state(&state, starting, &app).await;
 
     // Spawn dsh web --port 0
-    let mut child = Command::new("dsh")
+    let mut child = hidden_command("dsh")
         .args(["web", "--port", "0"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

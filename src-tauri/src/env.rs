@@ -1,8 +1,8 @@
+use crate::cmd_ext::{hidden_command, silent_command};
 use serde::{Deserialize, Serialize};
 use semver::Version;
 use std::path::PathBuf;
 use tauri::State;
-use tokio::process::Command;
 
 use crate::state::AppState;
 
@@ -49,21 +49,21 @@ pub struct EnvState {
 const NODE_MIN_VERSION: &str = "22.0.0";
 
 #[cfg(target_os = "windows")]
-fn find_executable(name: &str) -> Command {
-    let mut cmd = Command::new("where");
+fn find_executable(name: &str) -> tokio::process::Command {
+    let mut cmd = hidden_command("where");
     cmd.arg(name);
     cmd
 }
 
 #[cfg(not(target_os = "windows"))]
-fn find_executable(name: &str) -> Command {
-    let mut cmd = Command::new("which");
+fn find_executable(name: &str) -> tokio::process::Command {
+    let mut cmd = hidden_command("which");
     cmd.arg(name);
     cmd
 }
 
 async fn get_version(cmd: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new(cmd).args(args).output().await.ok()?;
+    let output = silent_command(cmd).args(args).output().await.ok()?;
     if !output.status.success() {
         return None;
     }

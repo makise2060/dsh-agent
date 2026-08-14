@@ -12,7 +12,7 @@ pub struct UpdateInfo {
 #[tauri::command]
 pub async fn check_dsh_update() -> Result<UpdateInfo, String> {
     // Get current installed version
-    let current_output = tokio::process::Command::new("dsh")
+    let current_output = crate::cmd_ext::silent_command("dsh")
         .arg("-V")
         .output()
         .await
