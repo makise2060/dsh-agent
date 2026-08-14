@@ -9,10 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://v2.tauri.app"><img src="https://img.shields.io/badge/Tauri-2.x-orange" alt="Tauri" /></a>
-  <a href="https://kit.svelte.dev"><img src="https://img.shields.io/badge/SvelteKit-2.x-ff3e00" alt="SvelteKit" /></a>
-  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-edition%202021-dea584" alt="Rust" /></a>
-  <a href="#license"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License" /></a>
+  <a href="https://v2.tauri.app"><img src="https://img.shields.io/badge/Tauri-2.x-orange?logo=tauri&logoColor=white" alt="Tauri" /></a>
+  <a href="https://svelte.dev"><img src="https://img.shields.io/badge/Svelte-5.x-ff3e00?logo=svelte&logoColor=white" alt="Svelte" /></a>
+  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.97-dea584?logo=rust&logoColor=white" alt="Rust" /></a>
+  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/TailwindCSS-3.x-38bdf8?logo=tailwindcss&logoColor=white" alt="TailwindCSS" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT-blue?logo=opensourceinitiative&logoColor=white" alt="License" /></a>
 </p>
 
 ## 概述
