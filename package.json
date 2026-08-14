@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "author": "DrPepper <makise2060@gmail.com>",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",

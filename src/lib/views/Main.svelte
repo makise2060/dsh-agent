@@ -61,7 +61,8 @@
 {:else if $processState.url}
   <iframe
     src={$processState.url}
+    title="DeepSeek Harness Web UI"
     class="h-full w-full border-0"
     allow="clipboard-read; clipboard-write"
-  />
+  ></iframe>
 {/if}

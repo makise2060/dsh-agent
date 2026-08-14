@@ -2,13 +2,13 @@
 name = "dsh-agent"
 version = "1.0.0"
 description = "DeepSeek Harness desktop webview wrapper"
-authors = ["dsh-agent"]
+authors = ["DrPepper <makise2060@gmail.com>"]
 edition = "2021"
 rust-version = "1.75"
 
 [lib]
 name = "dsh_agent_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["staticlib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
