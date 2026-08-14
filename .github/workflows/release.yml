@@ -70,12 +70,29 @@ jobs:
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
+          cd src-tauri
           $tag = "${{ inputs.tag || github.ref_name }}"
           $version = $tag.TrimStart('v')
-          # 动态查找 ISCC.exe
-          $iscc = Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          # 查找 ISCC.exe
+          $iscc = $null
+          $searchPaths = @(
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe"
+          )
+          foreach ($p in $searchPaths) {
+            if (Test-Path $p) { $iscc = $p; break }
+          }
+          if (-not $iscc) {
+            $iscc = (Get-ChildItem -Path "C:\Program Files*" -Filter "ISCC.exe" -Recurse -Depth 2 -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          }
           if (-not $iscc) { throw "ISCC.exe not found" }
-          & $iscc.FullName /DAPP_VERSION="$version" src-tauri/installer.iss
+          Write-Host "Using ISCC: $iscc"
+          # 确认源文件存在
+          Write-Host "exe exists: $(Test-Path 'target\release\dsh-agent.exe')"
+          Write-Host "dll exists: $(Test-Path 'target\release\WebView2Loader.dll')"
+          # 编译
+          & $iscc /DAPP_VERSION="$version" installer.iss 2>&1 | Write-Host
+          if ($LASTEXITCODE -ne 0) { throw "ISCC compile failed with exit code $LASTEXITCODE" }
 
       - name: Upload Inno Setup installer (Windows)
         if: matrix.platform == 'windows-latest'

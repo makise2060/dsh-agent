@@ -51,8 +51,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; 主程序
 Source: "target\release\dsh-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
-; WebView2 Loader DLL（Tauri 运行时必需）
-Source: "target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion
+; WebView2 Loader DLL（Tauri 运行时必需，可能不存在则跳过）
+Source: "target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{autoprograms}\DSH Agent"; Filename: "{app}\dsh-agent.exe"
