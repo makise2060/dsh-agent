@@ -70,6 +70,16 @@ pub async fn start_dsh(
     update_state(&state, starting, &app).await;
 
     // Spawn dsh web --port 0
+    // On Windows, `dsh` is typically a .cmd shim; use cmd.exe /C to resolve it
+    #[cfg(target_os = "windows")]
+    let mut child = hidden_command("cmd.exe")
+        .args(["/C", "dsh", "web", "--port", "0"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn dsh: {}", e))?;
+
+    #[cfg(not(target_os = "windows"))]
     let mut child = hidden_command("dsh")
         .args(["web", "--port", "0"])
         .stdout(std::process::Stdio::piped())

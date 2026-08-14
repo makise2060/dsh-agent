@@ -13,6 +13,7 @@ AppPublisher=DrPepper
 AppPublisherURL=https://github.com/makise2060/dsh-agent
 AppSupportURL=https://github.com/makise2060/dsh-agent/issues
 AppUpdatesURL=https://github.com/makise2060/dsh-agent/releases
+; 安装到 Program Files，需要管理员权限
 DefaultDirName={autopf}\DSH Agent
 DefaultGroupName=DSH Agent
 DisableProgramGroupPage=yes
@@ -78,8 +79,8 @@ var
 begin
   if IsProcessRunning('dsh-agent.exe') then
   begin
-    // 先尝试优雅关闭
-    Exec('taskkill', '/im dsh-agent.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    // 先尝试优雅关闭（按进程树）
+    Exec('taskkill', '/im dsh-agent.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     
     // 等待最多 3 秒
     WaitCount := 0;
@@ -91,16 +92,11 @@ begin
     
     // 强制结束
     if IsProcessRunning('dsh-agent.exe') then
-      Exec('taskkill', '/f /im dsh-agent.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('taskkill', '/f /im dsh-agent.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
   
-  // 同时清理可能残留的 dsh 子进程
-  if IsProcessRunning('dsh.exe') then
-    Exec('taskkill', '/f /im dsh.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  
-  // 清理 node.exe（dsh 的运行时）
-  if IsProcessRunning('node.exe') then
-    Exec('taskkill', '/f /im node.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // dsh.exe 和 node.exe 是 dsh-agent 的子进程，
+  // 上面的 /T 已经按进程树杀掉了，不需要单独处理
 end;
 
 function InitializeSetup(): Boolean;

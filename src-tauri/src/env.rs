@@ -63,15 +63,37 @@ fn find_executable(name: &str) -> tokio::process::Command {
 }
 
 async fn get_version(cmd: &str, args: &[&str]) -> Option<String> {
-    let output = silent_command(cmd).args(args).output().await.ok()?;
-    if !output.status.success() {
-        return None;
+    #[cfg(target_os = "windows")]
+    {
+        // On Windows, npm global installs are .cmd shims; use cmd.exe /C
+        let mut full_args = vec!["/C", cmd];
+        full_args.extend_from_slice(args);
+        let output = silent_command("cmd.exe")
+            .args(&full_args)
+            .output()
+            .await
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if stdout.is_empty() {
+            return None;
+        }
+        Some(stdout)
     }
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if stdout.is_empty() {
-        return None;
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = silent_command(cmd).args(args).output().await.ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if stdout.is_empty() {
+            return None;
+        }
+        Some(stdout)
     }
-    Some(stdout)
 }
 
 async fn find_path(name: &str) -> Option<String> {
