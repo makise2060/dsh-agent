@@ -45,7 +45,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/nicepkg/dsh-agent/releases/latest/download/latest.json"
+        "https://github.com/makise2060/dsh-agent/releases/latest/download/latest.json"
       ],
       "pubkey": ""
     }
