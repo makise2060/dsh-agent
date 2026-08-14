@@ -1,6 +1,6 @@
 [package]
 name = "dsh-agent"
-version = "1.0.0"
+version = "1.1.0"
 description = "DeepSeek Harness desktop webview wrapper"
 authors = ["DrPepper <makise2060@gmail.com>"]
 edition = "2021"

@@ -11,18 +11,17 @@ pub struct UpdateInfo {
 
 #[tauri::command]
 pub async fn check_dsh_update() -> Result<UpdateInfo, String> {
-    // Get current installed version
-    // On Windows, dsh is a .cmd shim; use cmd.exe /C
+    // Get current installed version via npx
     #[cfg(target_os = "windows")]
     let current_output = crate::cmd_ext::silent_command("cmd.exe")
-        .args(["/C", "dsh", "-V"])
+        .args(["/C", "npx", "@deepseek-ai/dsh", "-V"])
         .output()
         .await
         .map_err(|e| format!("Failed to run dsh -V: {}", e))?;
 
     #[cfg(not(target_os = "windows"))]
-    let current_output = crate::cmd_ext::silent_command("dsh")
-        .arg("-V")
+    let current_output = crate::cmd_ext::silent_command("npx")
+        .args(["@deepseek-ai/dsh", "-V"])
         .output()
         .await
         .map_err(|e| format!("Failed to run dsh -V: {}", e))?;

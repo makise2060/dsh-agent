@@ -260,7 +260,7 @@ Rust 后端代码在 `src-tauri/src/` 下，修改后会自动触发 Tauri 重�
     </td>
     <td>
       <h3>DrPepper (<a href="https://github.com/makise2060">@makise2060</a>)</h3>
-      <p>山东科技大学 · 计算机科学与技术</p>
+      <p>后端攻城狮 · With the assistance of Dsh</p>
       <p>Makise(Sometimes) — an ordinary backend engineer navigating the AI tide. Optimistic, rational, and full of hope, building wonders in everyday life.</p>
       <p>
         <a href="https://github.com/makise2060"><img src="https://img.shields.io/badge/GitHub-makise2060-181717?logo=github&logoColor=white" alt="GitHub" /></a>

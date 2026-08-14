@@ -69,19 +69,18 @@ pub async fn start_dsh(
     };
     update_state(&state, starting, &app).await;
 
-    // Spawn dsh web --port 0
-    // On Windows, `dsh` is typically a .cmd shim; use cmd.exe /C to resolve it
+    // Spawn dsh web --port 0 via npx, so we don't depend on global install / PATH
     #[cfg(target_os = "windows")]
     let mut child = hidden_command("cmd.exe")
-        .args(["/C", "dsh", "web", "--port", "0"])
+        .args(["/C", "npx", "@deepseek-ai/dsh", "web", "--port", "0"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn dsh: {}", e))?;
 
     #[cfg(not(target_os = "windows"))]
-    let mut child = hidden_command("dsh")
-        .args(["web", "--port", "0"])
+    let mut child = hidden_command("npx")
+        .args(["@deepseek-ai/dsh", "web", "--port", "0"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()

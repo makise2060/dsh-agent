@@ -171,9 +171,9 @@ pub async fn check_environment(_state: State<'_, AppState>) -> Result<EnvState, 
         path: npm_path,
     };
 
-    // dsh
-    let dsh_version_raw = get_version("dsh", &["-V"]).await;
-    let dsh_path = find_path("dsh").await;
+    // dsh - via npx to avoid PATH issues
+    let dsh_version_raw = get_version("npx", &["@deepseek-ai/dsh", "-V"]).await;
+    let dsh_path = find_path("npx").await;
     let dsh_version = dsh_version_raw.as_ref().and_then(|v| parse_dsh_version(v));
 
     // Check latest dsh version from npm registry
@@ -245,8 +245,8 @@ pub async fn check_node_version() -> Result<NodeInfo, String> {
 
 #[tauri::command]
 pub async fn check_dsh_version() -> Result<DshInfo, String> {
-    let dsh_version_raw = get_version("dsh", &["-V"]).await;
-    let dsh_path = find_path("dsh").await;
+    let dsh_version_raw = get_version("npx", &["@deepseek-ai/dsh", "-V"]).await;
+    let dsh_path = find_path("npx").await;
     let dsh_version = dsh_version_raw.as_ref().and_then(|v| parse_dsh_version(v));
 
     Ok(DshInfo {
