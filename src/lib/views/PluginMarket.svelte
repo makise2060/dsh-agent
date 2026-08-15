@@ -8,6 +8,7 @@
     onPluginInstallProgress
   } from '$lib/api/tauri';
   import { marketRepos, installedPackages, pluginLoading, installingPackage } from '$lib/stores/plugins';
+  import { currentRoute } from '$lib/stores/app';
   import type { PluginRepo } from '$lib/api/types';
 
   let searchQuery = '';
@@ -15,19 +16,38 @@
   let page = 1;
   let hasMore = false;
   let totalCount = 0;
+  let loaded = false;
+  let retried = false;
 
-  onMount(async () => {
-    await loadPlugins();
-    await loadInstalled();
-    const unlisten = await onPluginInstallProgress((p) => {
+  onMount(() => {
+    loadInstalled();
+    let unlisten: (() => void) | undefined;
+
+    onPluginInstallProgress((p) => {
       if (p.stage === 'done') {
         installingPackage.set(null);
         loadInstalled();
         loadPlugins();
       }
+    }).then((fn) => {
+      unlisten = fn;
     });
-    return () => unlisten();
+
+    return () => {
+      unlisten?.();
+    };
   });
+
+  // Load plugins when navigating to this tab (handles first visit and retry after failure)
+  $: if ($currentRoute === 'plugins' && !loaded) {
+    loaded = true;
+    loadPlugins();
+  }
+  // Retry once if list is still empty after first load completes
+  $: if ($currentRoute === 'plugins' && loaded && !retried && !$pluginLoading && $marketRepos.length === 0 && !searchQuery) {
+    retried = true;
+    loadPlugins();
+  }
 
   async function loadPlugins() {
     pluginLoading.set(true);

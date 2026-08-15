@@ -12,6 +12,7 @@ dist/
 src-tauri/target/
 
 # Inno Setup output
+src-tauri/DSH-Agent_*-setup.exe
 src-tauri/DSH Agent_*-setup.exe
 
 # IDE

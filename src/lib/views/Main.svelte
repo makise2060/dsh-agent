@@ -7,40 +7,47 @@
   let loading = true;
   let error: string | null = null;
 
-  onMount(async () => {
-    try {
-      // 先查后端状态，避免重复启动
-      let state = await getDshStatus();
-      if (state.status === 'Running' && state.url) {
-        processState.set(state);
+  onMount(() => {
+    let unlisten: (() => void) | undefined;
+
+    (async () => {
+      try {
+        // 先查后端状态，避免重复启动
+        let state = await getDshStatus();
+        if (state.status === 'Running' && state.url) {
+          processState.set(state);
+          loading = false;
+        } else if (state.status !== 'Running') {
+          // 没有运行，才调 startDsh
+          state = await startDsh();
+          processState.set(state);
+          if (state.status === 'Running' && state.url) {
+            loading = false;
+          } else if (state.status === 'Failed') {
+            error = state.error ?? '启动失败';
+            loading = false;
+          }
+        }
+      } catch (e) {
+        error = String(e);
         loading = false;
-      } else if (state.status !== 'Running') {
-        // 没有运行，才调 startDsh
-        state = await startDsh();
+      }
+
+      unlisten = await onProcessStateChanged((state) => {
         processState.set(state);
         if (state.status === 'Running' && state.url) {
           loading = false;
+          error = null;
         } else if (state.status === 'Failed') {
           error = state.error ?? '启动失败';
           loading = false;
         }
-      }
-    } catch (e) {
-      error = String(e);
-      loading = false;
-    }
+      });
+    })();
 
-    const unlisten = await onProcessStateChanged((state) => {
-      processState.set(state);
-      if (state.status === 'Running' && state.url) {
-        loading = false;
-        error = null;
-      } else if (state.status === 'Failed') {
-        error = state.error ?? '启动失败';
-        loading = false;
-      }
-    });
-    return () => unlisten();
+    return () => {
+      unlisten?.();
+    };
   });
 </script>
 

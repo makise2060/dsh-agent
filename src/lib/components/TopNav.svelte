@@ -6,8 +6,8 @@
   const tabs: { id: NavRoute; label: string }[] = [
     { id: 'main', label: '主界面' },
     { id: 'env', label: '运行环境' },
-    { id: 'version', label: '版本更新' },
-    { id: 'plugins', label: '插件市场' }
+    { id: 'plugins', label: '插件市场' },
+    { id: 'about', label: '关于' }
   ];
 
   const statusColors: Record<string, { dot: string; text: string; label: string }> = {

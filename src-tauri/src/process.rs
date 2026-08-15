@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::time::timeout;
 
-const DSH_START_TIMEOUT: Duration = Duration::from_secs(30);
+const DSH_START_TIMEOUT: Duration = Duration::from_secs(60);
 static URL_REGEX: &str = r"^dsh web:\s+http://127\.0\.0\.1:(\d+)";
 
 async fn update_state(state: &State<'_, AppState>, new_state: ProcessState, app: &AppHandle) {
@@ -131,6 +131,26 @@ pub async fn start_dsh(
 
     match result {
         Ok(Ok(port)) => {
+            // Wait for the HTTP server to be ready before returning
+            let url = format!("http://127.0.0.1:{}", port);
+            let ready = timeout(Duration::from_secs(15), async {
+                let client = reqwest::Client::builder()
+                    .timeout(Duration::from_secs(2))
+                    .build()
+                    .ok()?;
+                for _ in 0..30 {
+                    if client.get(&url).send().await.is_ok() {
+                        return Some(());
+                    }
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                }
+                None
+            })
+            .await;
+
+            // Even if health check times out, still return Running — the server might just be slow
+            let _ = &ready;
+
             let running = ProcessState {
                 status: "Running".to_string(),
                 url: Some(format!("http://127.0.0.1:{}", port)),

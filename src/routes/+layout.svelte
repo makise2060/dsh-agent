@@ -3,7 +3,7 @@
   import TopNav from '$lib/components/TopNav.svelte';
   import Main from '$lib/views/Main.svelte';
   import EnvPanel from '$lib/views/EnvPanel.svelte';
-  import VersionPanel from '$lib/views/VersionPanel.svelte';
+  import AboutPanel from '$lib/views/AboutPanel.svelte';
   import PluginMarket from '$lib/views/PluginMarket.svelte';
   import { currentRoute } from '$lib/stores/app';
   import { theme } from '$lib/stores/theme';
@@ -27,8 +27,8 @@
     <div class="absolute inset-0 {$currentRoute === 'env' ? 'block' : 'hidden'}">
       <EnvPanel />
     </div>
-    <div class="absolute inset-0 {$currentRoute === 'version' ? 'block' : 'hidden'}">
-      <VersionPanel />
+    <div class="absolute inset-0 {$currentRoute === 'about' ? 'block' : 'hidden'}">
+      <AboutPanel />
     </div>
     <div class="absolute inset-0 {$currentRoute === 'plugins' ? 'block' : 'hidden'}">
       <PluginMarket />

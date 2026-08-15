@@ -10,5 +10,5 @@ export const processState = writable<ProcessState>({
   started_at: null
 });
 
-export type NavRoute = 'main' | 'env' | 'version' | 'plugins';
+export type NavRoute = 'main' | 'env' | 'plugins' | 'about';
 export const currentRoute = writable<NavRoute>('main');
