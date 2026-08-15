@@ -29,7 +29,10 @@ pub async fn install_dsh(app: AppHandle) -> Result<(), String> {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to run npm install: {}", e))?
+            .map_err(|e| {
+                log::error!("Failed to run npm install: {}", e);
+                format!("Failed to run npm install: {}", e)
+            })?
     };
 
     #[cfg(not(target_os = "windows"))]
@@ -78,6 +81,7 @@ pub async fn install_dsh(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to wait for npm install: {}", e))?;
 
     if status.success() {
+        log::info!("dsh installed successfully via npm");
         let _ = app.emit(
             "install-progress",
             InstallProgress {
@@ -89,6 +93,7 @@ pub async fn install_dsh(app: AppHandle) -> Result<(), String> {
         Ok(())
     } else {
         let code = status.code().unwrap_or(-1);
+        log::error!("npm install failed with exit code {}", code);
         let _ = app.emit(
             "install-progress",
             InstallProgress {

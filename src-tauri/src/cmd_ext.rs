@@ -80,9 +80,11 @@ pub async fn resolve_global_bin(name: &str) -> String {
             .map(|d| d.join("node_modules").join("npm").is_dir())
             .unwrap_or(false);
         if has_real_npm {
+            log::info!("resolved real '{}' -> {}", name, p);
             return p.to_string();
         }
     }
+    log::warn!("resolve_global_bin('{}') found no real npm binary, falling back to bare name", name);
     name.to_string()
 }
 

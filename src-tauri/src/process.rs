@@ -80,7 +80,10 @@ pub async fn start_dsh(
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to spawn dsh: {}", e))?
+            .map_err(|e| {
+                log::error!("Failed to spawn dsh: {}", e);
+                format!("Failed to spawn dsh: {}", e)
+            })?
     };
 
     #[cfg(not(target_os = "windows"))]
@@ -92,6 +95,7 @@ pub async fn start_dsh(
         .map_err(|e| format!("Failed to spawn dsh: {}", e))?;
 
     let pid = child.id().unwrap_or(0);
+    log::info!("dsh spawned (pid={})", pid);
 
     // Take stdout before storing child
     let stdout = child.stdout.take().ok_or("No stdout")?;
@@ -169,7 +173,14 @@ pub async fn start_dsh(
             .await;
 
             // Even if health check times out, still return Running — the server might just be slow
-            let _ = &ready;
+            if ready.is_err() || ready.unwrap_or_default().is_none() {
+                log::warn!(
+                    "dsh HTTP health check on {} failed within 15s (server may still be slow)",
+                    url
+                );
+            } else {
+                log::info!("dsh HTTP server ready on {}", url);
+            }
 
             let running = ProcessState {
                 status: "Running".to_string(),
@@ -183,6 +194,7 @@ pub async fn start_dsh(
             Ok(running)
         }
         Ok(Err(e)) => {
+            log::error!("dsh failed to start: {}", e);
             let failed = ProcessState {
                 status: "Failed".to_string(),
                 error: Some(e.clone()),
@@ -200,6 +212,7 @@ pub async fn start_dsh(
                 "dsh web 启动超时 ({}s)，请检查上方日志。若为首次启动，初始化可能较慢",
                 DSH_START_TIMEOUT.as_secs()
             );
+            log::error!("{}", error_msg);
             let failed = ProcessState {
                 status: "Failed".to_string(),
                 error: Some(error_msg.clone()),
@@ -237,6 +250,7 @@ pub async fn stop_dsh(state: State<'_, AppState>, app: AppHandle) -> Result<(), 
 
     if pid > 0 {
         kill_process_tree(pid).await?;
+        log::info!("dsh stopped (pid={})", pid);
     }
 
     // Clear child handle

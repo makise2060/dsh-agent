@@ -54,6 +54,10 @@ export async function checkAppUpdate(): Promise<UpdateInfo> {
   return invoke<UpdateInfo>('check_app_update');
 }
 
+export async function getLogsDir(): Promise<string> {
+  return invoke<string>('get_logs_dir');
+}
+
 // ── Plugin Market ────────────────────────────────────────────────
 
 export async function searchPlugins(

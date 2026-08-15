@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { checkAppUpdate } from '$lib/api/tauri';
-  import { openUrl } from '@tauri-apps/plugin-opener';
+  import { checkAppUpdate, getLogsDir } from '$lib/api/tauri';
+  import { openPath, openUrl } from '@tauri-apps/plugin-opener';
   import type { UpdateInfo } from '$lib/api/types';
 
   const APP_VERSION = '1.1.3';
@@ -11,6 +11,7 @@
 
   let appUpdate: UpdateInfo | null = null;
   let checking = false;
+  let logsDir: string | null = null;
 
   async function handleCheckUpdate() {
     checking = true;
@@ -23,6 +24,16 @@
       console.error(e);
     } finally {
       checking = false;
+    }
+  }
+
+  async function handleOpenLogs() {
+    try {
+      const dir = await getLogsDir();
+      logsDir = dir;
+      await openPath(dir);
+    } catch (e) {
+      console.error(e);
     }
   }
 </script>
@@ -85,7 +96,21 @@
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         {checking ? '检查中...' : '检查更新'}
       </button>
+      <button
+        on:click={handleOpenLogs}
+        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        查看日志
+      </button>
     </div>
+
+    <!-- Logs dir hint -->
+    {#if logsDir}
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 text-center">
+        <p class="text-xs text-gray-500 dark:text-gray-400 font-mono break-all">{logsDir}</p>
+      </div>
+    {/if}
 
     <!-- Update status -->
     {#if checking}

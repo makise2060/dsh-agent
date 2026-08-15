@@ -1,6 +1,7 @@
 mod cmd_ext;
 mod env;
 mod installer;
+mod logger;
 mod plugins;
 mod process;
 mod state;
@@ -11,6 +12,9 @@ use tauri::Manager;
 
 /// Tauri command registration — keeps the entry point declarative.
 pub fn run() {
+    // File logging (crashes, node command errors, connection errors)
+    logger::init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
@@ -65,6 +69,8 @@ pub fn run() {
             plugins::install_plugin,
             plugins::remove_plugin,
             plugins::activate_plugin,
+            // Logging
+            logger::get_logs_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
