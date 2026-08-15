@@ -146,8 +146,9 @@ begin
   begin
     if ShouldCleanUserData then
     begin
-      // 清理 DSH_HOME
-      DelTree(ExpandConstant('{userprofile}\.dsh'), True, True, True);
+      // 清理 DSH_HOME（注意：{userprofile} 不是 Inno Setup 合法常量，
+      // 卸载时 ExpandConstant 会抛 "Unknown constant" 运行时错误，必须用 GetEnv）
+      DelTree(GetEnv('USERPROFILE') + '\.dsh', True, True, True);
       // 清理 AppData
       DelTree(ExpandConstant('{userappdata}\com.dsh-agent.app'), True, True, True);
     end;
