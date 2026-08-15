@@ -65,8 +65,10 @@ fn find_executable(name: &str) -> tokio::process::Command {
 async fn get_version(cmd: &str, args: &[&str]) -> Option<String> {
     #[cfg(target_os = "windows")]
     {
-        // On Windows, npm global installs are .cmd shims; use cmd.exe /C
-        let mut full_args = vec!["/C", cmd];
+        // On Windows, npm global installs are .cmd shims; use cmd.exe /C.
+        // Resolve the real binary to avoid version-manager shims that hang.
+        let resolved = crate::cmd_ext::resolve_global_bin(cmd).await;
+        let mut full_args = vec!["/C", resolved.as_str()];
         full_args.extend_from_slice(args);
         let output = silent_command("cmd.exe")
             .args(&full_args)

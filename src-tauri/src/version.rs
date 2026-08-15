@@ -13,11 +13,14 @@ pub struct UpdateInfo {
 pub async fn check_dsh_update() -> Result<UpdateInfo, String> {
     // Get current installed version via npx
     #[cfg(target_os = "windows")]
-    let current_output = crate::cmd_ext::silent_command("cmd.exe")
-        .args(["/C", "npx", "@deepseek-ai/dsh", "-V"])
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run dsh -V: {}", e))?;
+    let current_output = {
+        let npx = crate::cmd_ext::resolve_global_bin("npx").await;
+        crate::cmd_ext::silent_command("cmd.exe")
+            .args(["/C", npx.as_str(), "@deepseek-ai/dsh", "-V"])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run dsh -V: {}", e))?
+    };
 
     #[cfg(not(target_os = "windows"))]
     let current_output = crate::cmd_ext::silent_command("npx")

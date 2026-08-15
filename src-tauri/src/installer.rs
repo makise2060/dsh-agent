@@ -22,12 +22,15 @@ pub async fn install_dsh(app: AppHandle) -> Result<(), String> {
     );
 
     #[cfg(target_os = "windows")]
-    let mut child = hidden_command("cmd.exe")
-        .args(["/C", "npm", "install", "-g", "@deepseek-ai/dsh@latest"])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to run npm install: {}", e))?;
+    let mut child = {
+        let npm = crate::cmd_ext::resolve_global_bin("npm").await;
+        hidden_command("cmd.exe")
+            .args(["/C", npm.as_str(), "install", "-g", "@deepseek-ai/dsh@latest"])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to run npm install: {}", e))?
+    };
 
     #[cfg(not(target_os = "windows"))]
     let mut child = hidden_command("npm")

@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::time::timeout;
 
-const DSH_START_TIMEOUT: Duration = Duration::from_secs(60);
+const DSH_START_TIMEOUT: Duration = Duration::from_secs(120);
 static URL_REGEX: &str = r"^dsh web:\s+http://127\.0\.0\.1:(\d+)";
 
 async fn update_state(state: &State<'_, AppState>, new_state: ProcessState, app: &AppHandle) {
@@ -69,14 +69,19 @@ pub async fn start_dsh(
     };
     update_state(&state, starting, &app).await;
 
-    // Spawn dsh web --port 0 via npx, so we don't depend on global install / PATH
+    // Spawn dsh web --port 0 via npx, so we don't depend on global install / PATH.
+    // Resolve the real npx path first — version-manager shims (nvmd etc.) hang
+    // in elevated/hidden contexts, which made the first launch after install fail.
     #[cfg(target_os = "windows")]
-    let mut child = hidden_command("cmd.exe")
-        .args(["/C", "npx", "@deepseek-ai/dsh", "web", "--port", "0"])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to spawn dsh: {}", e))?;
+    let mut child = {
+        let npx = crate::cmd_ext::resolve_global_bin("npx").await;
+        hidden_command("cmd.exe")
+            .args(["/C", npx.as_str(), "@deepseek-ai/dsh", "web", "--port", "0"])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to spawn dsh: {}", e))?
+    };
 
     #[cfg(not(target_os = "windows"))]
     let mut child = hidden_command("npx")
@@ -90,6 +95,21 @@ pub async fn start_dsh(
 
     // Take stdout before storing child
     let stdout = child.stdout.take().ok_or("No stdout")?;
+
+    // Take stderr too — CRITICAL: if stderr is piped but never consumed,
+    // the child blocks once the OS pipe buffer (4KB on Windows) fills up,
+    // which stalls dsh before it can print its URL. Spawn a reader task
+    // that drains stderr for the lifetime of the process.
+    let stderr = child.stderr.take().ok_or("No stderr")?;
+    let app_for_stderr = app.clone();
+    tokio::spawn(async move {
+        let reader = BufReader::new(stderr);
+        let mut lines = reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            log::info!("dsh stderr: {}", line);
+            let _ = app_for_stderr.emit("dsh-stdout", &format!("[stderr] {}", line));
+        }
+    });
 
     // Store child handle (without stdout since we took it)
     {
@@ -176,7 +196,10 @@ pub async fn start_dsh(
             Err(e)
         }
         Err(_) => {
-            let error_msg = "dsh web 启动超时 (30s)，请检查环境配置".to_string();
+            let error_msg = format!(
+                "dsh web 启动超时 ({}s)，请检查上方日志。若为首次启动，初始化可能较慢",
+                DSH_START_TIMEOUT.as_secs()
+            );
             let failed = ProcessState {
                 status: "Failed".to_string(),
                 error: Some(error_msg.clone()),

@@ -171,12 +171,15 @@ pub async fn install_plugin(app: AppHandle, package_name: String) -> Result<(), 
     );
 
     #[cfg(target_os = "windows")]
-    let mut child = hidden_command("cmd.exe")
-        .args(["/C", "npx", "@deepseek-ai/dsh", "plugin", "--profile", "web", "add", &pkg])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to run dsh plugin add: {}", e))?;
+    let mut child = {
+        let npx = crate::cmd_ext::resolve_global_bin("npx").await;
+        hidden_command("cmd.exe")
+            .args(["/C", npx.as_str(), "@deepseek-ai/dsh", "plugin", "--profile", "web", "add", &pkg])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to run dsh plugin add: {}", e))?
+    };
 
     #[cfg(not(target_os = "windows"))]
     let mut child = hidden_command("npx")
@@ -258,11 +261,14 @@ pub async fn remove_plugin(app: AppHandle, package_name: String) -> Result<(), S
     );
 
     #[cfg(target_os = "windows")]
-    let output = hidden_command("cmd.exe")
-        .args(["/C", "npx", "@deepseek-ai/dsh", "plugin", "--profile", "web", "remove", &pkg])
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run dsh plugin remove: {}", e))?;
+    let output = {
+        let npx = crate::cmd_ext::resolve_global_bin("npx").await;
+        hidden_command("cmd.exe")
+            .args(["/C", npx.as_str(), "@deepseek-ai/dsh", "plugin", "--profile", "web", "remove", &pkg])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run dsh plugin remove: {}", e))?
+    };
 
     #[cfg(not(target_os = "windows"))]
     let output = hidden_command("npx")
