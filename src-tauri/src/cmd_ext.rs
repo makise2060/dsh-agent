@@ -92,3 +92,90 @@ pub async fn resolve_global_bin(name: &str) -> String {
 pub async fn resolve_global_bin(name: &str) -> String {
     name.to_string()
 }
+
+/// Windows Job Object with KILL_ON_JOB_CLOSE: every process assigned to it is
+/// killed when the handle is closed — including when our own process dies
+/// abruptly (crash / task manager kill), which never triggers CloseRequested.
+/// This guarantees the dsh process tree cannot outlive dsh-agent.
+#[cfg(target_os = "windows")]
+pub struct JobGuard {
+    handle: windows_sys::Win32::Foundation::HANDLE,
+}
+
+#[cfg(target_os = "windows")]
+impl JobGuard {
+    pub fn create() -> Option<JobGuard> {
+        use std::mem::{size_of, zeroed};
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::JobObjects::{
+            CreateJobObjectW, SetInformationJobObject, JobObjectExtendedLimitInformation,
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+        };
+
+        unsafe {
+            let handle = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+            if handle.is_null() {
+                log::warn!("CreateJobObjectW failed: {}", std::io::Error::last_os_error());
+                return None;
+            }
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            let ok = SetInformationJobObject(
+                handle,
+                JobObjectExtendedLimitInformation,
+                &info as *const _ as *const _,
+                size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+            );
+            if ok == 0 {
+                log::warn!("SetInformationJobObject failed: {}", std::io::Error::last_os_error());
+                CloseHandle(handle);
+                return None;
+            }
+            Some(JobGuard { handle })
+        }
+    }
+
+    /// Assign an already-spawned process (by pid) into the job.
+    pub fn assign(&self, pid: u32) {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::JobObjects::AssignProcessToJobObject;
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SET_QUOTA,
+            PROCESS_TERMINATE,
+        };
+
+        unsafe {
+            let proc = OpenProcess(
+                PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+                0,
+                pid,
+            );
+            if proc.is_null() {
+                log::warn!("OpenProcess({}) failed: {}", pid, std::io::Error::last_os_error());
+                return;
+            }
+            let ok = AssignProcessToJobObject(self.handle, proc);
+            if ok == 0 {
+                log::warn!(
+                    "AssignProcessToJobObject({}) failed: {}",
+                    pid,
+                    std::io::Error::last_os_error()
+                );
+            }
+            CloseHandle(proc);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl Drop for JobGuard {
+    fn drop(&mut self) {
+        unsafe {
+            windows_sys::Win32::Foundation::CloseHandle(self.handle);
+        }
+    }
+}
+
+// Windows handles are process-scoped and safe to move between threads.
+#[cfg(target_os = "windows")]
+unsafe impl Send for JobGuard {}

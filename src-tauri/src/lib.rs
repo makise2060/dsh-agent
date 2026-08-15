@@ -21,29 +21,29 @@ pub fn run() {
         .manage(AppState::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // Kill dsh process on window close (sync context — use try_lock)
+                // Kill the dsh process tree on window close. Reads the
+                // lock-free pid mirror (not the async mutex) so a kill is
+                // never skipped because the state lock is contended, and it
+                // also covers the "Starting" window. If the app dies without
+                // CloseRequested (crash / task manager), the Job Object
+                // (KILL_ON_JOB_CLOSE) cleans the tree up for us.
                 let app_state = window.app_handle().try_state::<AppState>();
                 if let Some(s) = app_state {
-                    // tokio::sync::Mutex::try_lock won't block
-                    let pid = s.process_state.try_lock()
-                        .map(|ps| ps.pid.unwrap_or(0))
-                        .unwrap_or(0);
+                    let pid = s.get_dsh_pid();
                     if pid > 0 {
                         #[cfg(target_os = "windows")]
                         {
                             use std::os::windows::process::CommandExt;
-                            std::process::Command::new("taskkill")
+                            let _ = std::process::Command::new("taskkill")
                                 .args(["/pid", &pid.to_string(), "/T", "/F"])
                                 .creation_flags(0x08000000) // CREATE_NO_WINDOW
-                                .spawn()
-                                .ok();
+                                .spawn();
                         }
                         #[cfg(not(target_os = "windows"))]
                         {
-                            std::process::Command::new("kill")
+                            let _ = std::process::Command::new("kill")
                                 .args(["-KILL", &pid.to_string()])
-                                .spawn()
-                                .ok();
+                                .spawn();
                         }
                     }
                 }

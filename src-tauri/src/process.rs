@@ -97,6 +97,11 @@ pub async fn start_dsh(
     let pid = child.id().unwrap_or(0);
     log::info!("dsh spawned (pid={})", pid);
 
+    // Publish the pid immediately (lock-free), so window-close / app exit can
+    // always find and kill the tree — even during "Starting" or when the
+    // async state mutex is contended.
+    state.set_dsh_pid(pid);
+
     // Take stdout before storing child
     let stdout = child.stdout.take().ok_or("No stdout")?;
 
@@ -106,7 +111,23 @@ pub async fn start_dsh(
     // that drains stderr for the lifetime of the process.
     let stderr = child.stderr.take().ok_or("No stderr")?;
     let app_for_stderr = app.clone();
+
+    // Windows Job Object (KILL_ON_JOB_CLOSE): the whole dsh tree dies with us
+    // even if we are killed without a CloseRequested (crash / task manager).
+    // The guard lives inside the stderr reader task — when the task ends the
+    // job closes, and any surviving descendants are force-killed by the OS.
+    #[cfg(target_os = "windows")]
+    let job = crate::cmd_ext::JobGuard::create();
+    #[cfg(target_os = "windows")]
+    if let Some(job) = &job {
+        job.assign(pid);
+    }
+    #[cfg(not(target_os = "windows"))]
+    let job = ();
+
     tokio::spawn(async move {
+        // Keep the job handle alive for the lifetime of this reader task.
+        let _job_guard = job;
         let reader = BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
@@ -205,6 +226,7 @@ pub async fn start_dsh(
             if pid > 0 {
                 let _ = kill_process_tree(pid).await;
             }
+            state.set_dsh_pid(0);
             Err(e)
         }
         Err(_) => {
@@ -223,6 +245,7 @@ pub async fn start_dsh(
             if pid > 0 {
                 let _ = kill_process_tree(pid).await;
             }
+            state.set_dsh_pid(0);
             Err(error_msg)
         }
     }
@@ -235,7 +258,9 @@ pub async fn stop_dsh(state: State<'_, AppState>, app: AppHandle) -> Result<(), 
         if current.status == "Stopped" || current.status == "NotStarted" {
             return Ok(());
         }
-        current.pid.unwrap_or(0)
+        // Fall back to the lock-free pid (covers "Starting", where
+        // ProcessState.pid is still None).
+        current.pid.unwrap_or(state.get_dsh_pid())
     };
 
     update_state(
@@ -252,6 +277,7 @@ pub async fn stop_dsh(state: State<'_, AppState>, app: AppHandle) -> Result<(), 
         kill_process_tree(pid).await?;
         log::info!("dsh stopped (pid={})", pid);
     }
+    state.set_dsh_pid(0);
 
     // Clear child handle
     {
@@ -286,14 +312,6 @@ pub async fn restart_dsh(
     // Small delay to ensure port is released
     tokio::time::sleep(Duration::from_secs(1)).await;
     start_dsh(state, app).await
-}
-
-/// Called on app exit to ensure dsh is killed
-pub async fn cleanup_on_exit(state: &AppState) {
-    let pid = state.process_state.lock().await.pid.unwrap_or(0);
-    if pid > 0 {
-        let _ = kill_process_tree(pid).await;
-    }
 }
 
 fn chrono_now() -> String {
