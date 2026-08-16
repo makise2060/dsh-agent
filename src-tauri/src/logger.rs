@@ -90,6 +90,7 @@ pub fn init() -> PathBuf {
         "========== DSH Agent {} started ==========",
         env!("CARGO_PKG_VERSION")
     );
+    log::info!("logs directory: {}", dir.display());
 
     // Record panics directly to the log file (bypass the logger to avoid
     // deadlocking if the panic happens while the logger holds its mutex).

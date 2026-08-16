@@ -54,6 +54,11 @@ Source: "target\release\dsh-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; WebView2 Loader DLL（Tauri 运行时必需，可能不存在则跳过）
 Source: "target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
+; 日志目录：安装时创建并授予普通用户写权限，否则 Program Files 下
+; 非提权进程无法写入，日志会回退到 AppData
+[Dirs]
+Name: "{app}\logs"; Permissions: users-modify
+
 [Icons]
 Name: "{autoprograms}\DSH Agent"; Filename: "{app}\dsh-agent.exe"
 Name: "{autodesktop}\DSH Agent"; Filename: "{app}\dsh-agent.exe"; Tasks: desktopicon
