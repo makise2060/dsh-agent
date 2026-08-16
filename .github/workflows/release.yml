@@ -39,6 +39,22 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG..HEAD")
+          else
+            NOTES=$(git log --pretty=format:"- %s" | head -30)
+          fi
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -142,6 +158,12 @@ jobs:
             | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" alt="Linux" width="28"/> | Linux Kernel 5.4+ | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent_${{ steps.vars.outputs.version }}_amd64.AppImage"><img src="https://img.shields.io/badge/AppImage-x64-f84e29?logo=linux&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent_${{ steps.vars.outputs.version }}_amd64.deb"><img src="https://img.shields.io/badge/DEB-x64-A81D33?logo=debian&logoColor=white&style=flat-square&labelColor=222222"></a> <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH.Agent-${{ steps.vars.outputs.version }}-1.x86_64.rpm"><img src="https://img.shields.io/badge/RPM-x64-red?logo=fedora&logoColor=white&style=flat-square&labelColor=222222"></a> |
 
             </div>
+
+            ---
+
+            ### 🚀 本次更新
+
+            ${{ steps.changelog.outputs.notes }}
 
             ---
 
