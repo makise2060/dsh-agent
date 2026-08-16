@@ -28,7 +28,10 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
+      # fetch-depth: 0 拉取完整历史与 tags，Generate changelog 需要上一个 tag 和全部提交
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Compute version
         id: vars
@@ -43,6 +46,7 @@ jobs:
         id: changelog
         shell: bash
         run: |
+          git fetch --tags --force
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
             NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG..HEAD")
