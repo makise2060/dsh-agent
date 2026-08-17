@@ -4,7 +4,7 @@
   import { openPath, openUrl } from '@tauri-apps/plugin-opener';
   import type { UpdateInfo } from '$lib/api/types';
 
-  const APP_VERSION = '1.1.5';
+  const APP_VERSION = '1.2.0';
   const REPO_URL = 'https://github.com/makise2060/dsh-agent';
   const RELEASES_URL = `${REPO_URL}/releases`;
   const ISSUES_URL = `${REPO_URL}/issues`;

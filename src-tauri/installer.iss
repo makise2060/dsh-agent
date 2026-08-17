@@ -64,7 +64,18 @@ Name: "{autoprograms}\DSH Agent"; Filename: "{app}\dsh-agent.exe"
 Name: "{autodesktop}\DSH Agent"; Filename: "{app}\dsh-agent.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\dsh-agent.exe"; Description: "{cm:LaunchProgram,DSH Agent}"; Flags: nowait postinstall skipifsilent
+; 不要让 Setup 直接 Exec 本程序。Setup 自身以 RedirectionGuard enforcing 模式运行
+; （见 Setup 日志 "RedirectionGuard status for current process: Enabled in enforcing
+; mode"），子进程会继承这套进程缓解策略；而 dsh 的 profile 插件全部经由
+; ~\.dsh\profiles\node_modules 下由普通用户创建的符号链接解析，enforcing 模式下这些
+; 链接不被信任、拒绝跟随，表现就是 boot 时 ERR_MODULE_NOT_FOUND —— 磁盘上链接完好，
+; 从开始菜单启动同一个 exe 一切正常。
+;
+; 经 explorer.exe 转交给桌面 shell 启动，新进程挂在 explorer 下而非 Setup 下，
+; 令牌、缓解策略、环境块、句柄全部与 Setup 脱钩。runasoriginaluser 保留，确保这次
+; 转交本身也在原用户上下文（注意：该 flag 对 postinstall 条目本就是默认行为，
+; Inno 日志在加它之前就已经打印 "Run as: Original user"，单独加它无法修复本问题）。
+Filename: "{win}\explorer.exe"; Parameters: """{app}\dsh-agent.exe"""; Description: "{cm:LaunchProgram,DSH Agent}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 var

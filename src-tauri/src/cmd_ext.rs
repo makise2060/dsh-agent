@@ -179,3 +179,98 @@ impl Drop for JobGuard {
 // Windows handles are process-scoped and safe to move between threads.
 #[cfg(target_os = "windows")]
 unsafe impl Send for JobGuard {}
+
+/// Log the launch context, then read one of dsh's profile plugin links.
+///
+/// The same `dsh-agent.exe` boots dsh fine from the Start menu but fails with
+/// ERR_MODULE_NOT_FOUND when the installer's post-install checkbox launches it,
+/// with the ~250 symlinks under `~/.dsh/profiles/node_modules` untouched on
+/// disk the whole time. dsh reaches every profile plugin through those links,
+/// and they were created by a non-elevated process — a process running with
+/// RedirectionGuard in enforcing mode refuses to follow links it does not
+/// trust, which looks exactly like a missing package. Inno Setup turns that
+/// mitigation on for Setup itself ("RedirectionGuard status for current
+/// process: Enabled in enforcing mode" in its log).
+///
+/// So: report the policy, and actually read through a link. Whichever way the
+/// next installer run goes, the log says which of the two it was instead of
+/// leaving us to guess again.
+#[cfg(target_os = "windows")]
+pub fn log_launch_context() {
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcess, GetProcessMitigationPolicy, ProcessRedirectionTrustPolicy,
+    };
+
+    if let Ok(cwd) = std::env::current_dir() {
+        log::info!("launch context: cwd={}", cwd.display());
+    }
+
+    unsafe {
+        // windows-sys 0.59 ships the policy constant but not
+        // PROCESS_MITIGATION_REDIRECTION_TRUST_POLICY. That type is a union of
+        // a DWORD and a bitfield over the same 4 bytes, so a bare u32 is
+        // byte-identical and needs no extra dependency.
+        let mut flags: u32 = 0;
+        let ok = GetProcessMitigationPolicy(
+            GetCurrentProcess(),
+            ProcessRedirectionTrustPolicy,
+            &mut flags as *mut u32 as *mut core::ffi::c_void,
+            std::mem::size_of::<u32>(),
+        );
+        if ok == 0 {
+            log::warn!(
+                "launch context: GetProcessMitigationPolicy failed: {}",
+                std::io::Error::last_os_error()
+            );
+        } else {
+            // Bit 0 = EnforceRedirectionTrust, bit 1 = AuditRedirectionTrust.
+            log::info!(
+                "launch context: RedirectionGuard enforce={} audit={} (raw=0x{:08x})",
+                flags & 1,
+                (flags >> 1) & 1,
+                flags
+            );
+        }
+    }
+
+    probe_profile_link();
+}
+
+/// Read one profile plugin through its symlink. `@deepseek-ai/cordis-plugin-timer`
+/// is the first entry dsh's loader reports as missing, so it is the one to check.
+#[cfg(target_os = "windows")]
+fn probe_profile_link() {
+    let Some(home) = dirs::home_dir() else {
+        log::warn!("launch context: no home dir, skipping profile link probe");
+        return;
+    };
+    let link = home
+        .join(".dsh")
+        .join("profiles")
+        .join("node_modules")
+        .join("@deepseek-ai")
+        .join("cordis-plugin-timer");
+
+    match std::fs::symlink_metadata(&link) {
+        Ok(m) => log::info!(
+            "launch context: {} exists (symlink={})",
+            link.display(),
+            m.file_type().is_symlink()
+        ),
+        Err(e) => log::error!("launch context: symlink_metadata({}) failed: {}", link.display(), e),
+    }
+
+    // The decisive one: reading *through* the link is exactly what Node does
+    // when it resolves the bare specifier.
+    let pkg = link.join("package.json");
+    match std::fs::read_to_string(&pkg) {
+        Ok(s) => log::info!("launch context: read {} OK ({} bytes)", pkg.display(), s.len()),
+        Err(e) => log::error!(
+            "launch context: read {} FAILED: {} (kind={:?}, os={:?})",
+            pkg.display(),
+            e,
+            e.kind(),
+            e.raw_os_error()
+        ),
+    }
+}

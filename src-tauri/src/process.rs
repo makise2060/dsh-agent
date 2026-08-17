@@ -8,7 +8,7 @@ use tokio::time::timeout;
 
 const DSH_START_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_START_ATTEMPTS: u32 = 3;
-const RETRY_DELAY: Duration = Duration::from_secs(3);
+const RETRY_DELAY: Duration = Duration::from_secs(5);
 static URL_REGEX: &str = r"^dsh web:\s+http://127\.0\.0\.1:(\d+)";
 
 async fn update_state(state: &State<'_, AppState>, new_state: ProcessState, app: &AppHandle) {
@@ -71,13 +71,26 @@ pub async fn start_dsh(
     };
     update_state(&state, starting.clone(), &app).await;
 
-    // dsh's profile heal is idempotent and often self-heals on the next run
-    // (e.g. a broken fallback symlink gets rebuilt), so retry a few times
-    // before giving up instead of forcing the user to click "retry" manually.
+    // Record how we were launched before touching anything. An installer-
+    // launched run and a Start-menu-launched run of the *same* binary behave
+    // differently (see log_launch_context), and the difference is invisible
+    // once dsh has already failed — so capture it up front.
+    #[cfg(target_os = "windows")]
+    crate::cmd_ext::log_launch_context();
+
+    // Retry is a safety net for genuinely transient failures (npm cache lock,
+    // a port grabbed between bind and print). It does NOT rescue the
+    // installer-launch failure: whatever the launch context breaks stays
+    // broken for our whole process lifetime, so all attempts fail identically.
+    // Keep the delay short — 3 doomed attempts should not cost the user a
+    // minute of staring at the loading screen before the error appears.
     let mut last_err = String::new();
     for attempt in 1..=MAX_START_ATTEMPTS {
         match start_dsh_once(&state, &app).await {
-            Ok(running) => return Ok(running),
+            Ok(running) => {
+                update_state(&state, running.clone(), &app).await;
+                return Ok(running);
+            }
             Err(e) => {
                 log::warn!(
                     "dsh start attempt {}/{} failed: {}",
@@ -87,20 +100,18 @@ pub async fn start_dsh(
                 );
                 last_err = e;
                 if attempt < MAX_START_ATTEMPTS {
-                    // dsh's fallback dir (profiles/node_modules) is fully
-                    // managed by dsh — every entry is a symlink it rebuilds on
-                    // boot. Wiping it before the retry forces a clean heal and
-                    // fixes dangling-link failures that dsh's own heal skips
-                    // (it only compares link targets, never validates them).
-                    let fallback =
-                        crate::env::get_dsh_home().join("profiles").join("node_modules");
-                    if fallback.exists() {
-                        log::warn!(
-                            "wiping dsh fallback {} before retry",
-                            fallback.display()
-                        );
-                        let _ = std::fs::remove_dir_all(&fallback);
-                    }
+                    // Keep the loading screen informed — without this the UI
+                    // looks frozen for the whole retry delay.
+                    let _ = app.emit(
+                        "dsh-stdout",
+                        &format!(
+                            "[dsh-agent] 第 {} 次启动失败，{} 秒后重试（{}/{}）",
+                            attempt,
+                            RETRY_DELAY.as_secs(),
+                            attempt + 1,
+                            MAX_START_ATTEMPTS
+                        ),
+                    );
                     update_state(&state, starting.clone(), &app).await;
                     tokio::time::sleep(RETRY_DELAY).await;
                 }
@@ -293,19 +304,13 @@ async fn start_dsh_once(
                 error: None,
                 started_at: Some(chrono_now()),
             };
-            update_state(state, running.clone(), app).await;
+            // The caller owns state transitions — a failure here must not
+            // surface as "Failed" while retries are still pending.
             Ok(running)
         }
         Ok(Err(e)) => {
             log::error!("dsh failed to start: {}", e);
             let err = with_tail(e);
-            let failed = ProcessState {
-                status: "Failed".to_string(),
-                error: Some(err.clone()),
-                pid: Some(pid),
-                ..Default::default()
-            };
-            update_state(state, failed, app).await;
             if pid > 0 {
                 let _ = kill_process_tree(pid).await;
             }
@@ -319,13 +324,6 @@ async fn start_dsh_once(
             );
             log::error!("{}", error_msg);
             let err = with_tail(error_msg);
-            let failed = ProcessState {
-                status: "Failed".to_string(),
-                error: Some(err.clone()),
-                pid: Some(pid),
-                ..Default::default()
-            };
-            update_state(state, failed, app).await;
             if pid > 0 {
                 let _ = kill_process_tree(pid).await;
             }
