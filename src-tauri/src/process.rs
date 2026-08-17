@@ -7,6 +7,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::time::timeout;
 
 const DSH_START_TIMEOUT: Duration = Duration::from_secs(120);
+const MAX_START_ATTEMPTS: u32 = 3;
+const RETRY_DELAY: Duration = Duration::from_secs(3);
 static URL_REGEX: &str = r"^dsh web:\s+http://127\.0\.0\.1:(\d+)";
 
 async fn update_state(state: &State<'_, AppState>, new_state: ProcessState, app: &AppHandle) {
@@ -67,8 +69,59 @@ pub async fn start_dsh(
         status: "Starting".to_string(),
         ..Default::default()
     };
-    update_state(&state, starting, &app).await;
+    update_state(&state, starting.clone(), &app).await;
 
+    // dsh's profile heal is idempotent and often self-heals on the next run
+    // (e.g. a broken fallback symlink gets rebuilt), so retry a few times
+    // before giving up instead of forcing the user to click "retry" manually.
+    let mut last_err = String::new();
+    for attempt in 1..=MAX_START_ATTEMPTS {
+        match start_dsh_once(&state, &app).await {
+            Ok(running) => return Ok(running),
+            Err(e) => {
+                log::warn!(
+                    "dsh start attempt {}/{} failed: {}",
+                    attempt,
+                    MAX_START_ATTEMPTS,
+                    e
+                );
+                last_err = e;
+                if attempt < MAX_START_ATTEMPTS {
+                    // dsh's fallback dir (profiles/node_modules) is fully
+                    // managed by dsh — every entry is a symlink it rebuilds on
+                    // boot. Wiping it before the retry forces a clean heal and
+                    // fixes dangling-link failures that dsh's own heal skips
+                    // (it only compares link targets, never validates them).
+                    let fallback =
+                        crate::env::get_dsh_home().join("profiles").join("node_modules");
+                    if fallback.exists() {
+                        log::warn!(
+                            "wiping dsh fallback {} before retry",
+                            fallback.display()
+                        );
+                        let _ = std::fs::remove_dir_all(&fallback);
+                    }
+                    update_state(&state, starting.clone(), &app).await;
+                    tokio::time::sleep(RETRY_DELAY).await;
+                }
+            }
+        }
+    }
+
+    let failed = ProcessState {
+        status: "Failed".to_string(),
+        error: Some(last_err.clone()),
+        ..Default::default()
+    };
+    update_state(&state, failed, &app).await;
+    Err(last_err)
+}
+
+/// One single spawn-and-wait-for-URL attempt.
+async fn start_dsh_once(
+    state: &State<'_, AppState>,
+    app: &AppHandle,
+) -> Result<ProcessState, String> {
     // Spawn dsh web --port 0 via npx, so we don't depend on global install / PATH.
     // Resolve the real npx path first — version-manager shims (nvmd etc.) hang
     // in elevated/hidden contexts, which made the first launch after install fail.
@@ -112,6 +165,13 @@ pub async fn start_dsh(
     let stderr = child.stderr.take().ok_or("No stderr")?;
     let app_for_stderr = app.clone();
 
+    // Keep the most recent stderr lines so a failed start can surface the
+    // actual dsh error (e.g. ERR_MODULE_NOT_FOUND) instead of a bare
+    // "process exited" message.
+    let stderr_tail: std::sync::Arc<tokio::sync::Mutex<std::collections::VecDeque<String>>> =
+        std::sync::Arc::new(tokio::sync::Mutex::new(std::collections::VecDeque::new()));
+    let stderr_tail_for_task = stderr_tail.clone();
+
     // Windows Job Object (KILL_ON_JOB_CLOSE): the whole dsh tree dies with us
     // even if we are killed without a CloseRequested (crash / task manager).
     // The guard lives inside the stderr reader task — when the task ends the
@@ -133,6 +193,11 @@ pub async fn start_dsh(
         while let Ok(Some(line)) = lines.next_line().await {
             log::info!("dsh stderr: {}", line);
             let _ = app_for_stderr.emit("dsh-stdout", &format!("[stderr] {}", line));
+            let mut tail = stderr_tail_for_task.lock().await;
+            tail.push_back(line);
+            while tail.len() > 30 {
+                tail.pop_front();
+            }
         }
     });
 
@@ -174,6 +239,23 @@ pub async fn start_dsh(
     })
     .await;
 
+    // Surface the last stderr lines so the user can see the real cause.
+    let with_tail = |err: String| {
+        let tail = stderr_tail.try_lock();
+        if let Ok(tail) = tail {
+            if !tail.is_empty() {
+                let lines: Vec<String> = tail.iter().cloned().collect();
+                return format!(
+                    "{}\n--- dsh stderr (最近 {} 行) ---\n{}",
+                    err,
+                    lines.len(),
+                    lines.join("\n")
+                );
+            }
+        }
+        err
+    };
+
     match result {
         Ok(Ok(port)) => {
             // Wait for the HTTP server to be ready before returning
@@ -211,23 +293,24 @@ pub async fn start_dsh(
                 error: None,
                 started_at: Some(chrono_now()),
             };
-            update_state(&state, running.clone(), &app).await;
+            update_state(state, running.clone(), app).await;
             Ok(running)
         }
         Ok(Err(e)) => {
             log::error!("dsh failed to start: {}", e);
+            let err = with_tail(e);
             let failed = ProcessState {
                 status: "Failed".to_string(),
-                error: Some(e.clone()),
+                error: Some(err.clone()),
                 pid: Some(pid),
                 ..Default::default()
             };
-            update_state(&state, failed.clone(), &app).await;
+            update_state(state, failed, app).await;
             if pid > 0 {
                 let _ = kill_process_tree(pid).await;
             }
             state.set_dsh_pid(0);
-            Err(e)
+            Err(err)
         }
         Err(_) => {
             let error_msg = format!(
@@ -235,18 +318,19 @@ pub async fn start_dsh(
                 DSH_START_TIMEOUT.as_secs()
             );
             log::error!("{}", error_msg);
+            let err = with_tail(error_msg);
             let failed = ProcessState {
                 status: "Failed".to_string(),
-                error: Some(error_msg.clone()),
+                error: Some(err.clone()),
                 pid: Some(pid),
                 ..Default::default()
             };
-            update_state(&state, failed.clone(), &app).await;
+            update_state(state, failed, app).await;
             if pid > 0 {
                 let _ = kill_process_tree(pid).await;
             }
             state.set_dsh_pid(0);
-            Err(error_msg)
+            Err(err)
         }
     }
 }
