@@ -61,13 +61,46 @@ pub async fn check_dsh_update() -> Result<UpdateInfo, String> {
 pub async fn check_app_update() -> Result<UpdateInfo, String> {
     let current = env!("CARGO_PKG_VERSION").to_string();
 
-    // For now, just return current version without remote check
-    // This will be connected to Tauri's updater plugin later
+    // Query the latest GitHub release and compare with the running version.
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Failed to build client: {}", e))?;
+
+    let resp = client
+        .get("https://api.github.com/repos/makise2060/dsh-agent/releases/latest")
+        // GitHub API rejects requests without a User-Agent
+        .header("User-Agent", "dsh-agent")
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("GitHub API error: HTTP {}", resp.status()));
+    }
+
+    let json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Parse error: {}", e))?;
+
+    let latest = json["tag_name"]
+        .as_str()
+        .unwrap_or_default()
+        .trim_start_matches('v')
+        .to_string();
+    if latest.is_empty() {
+        return Err("Missing tag_name in GitHub response".to_string());
+    }
+
+    let release_notes = json["body"].as_str().map(|s| s.to_string());
+    let update_available = compare_versions(&current, &latest);
+
     Ok(UpdateInfo {
-        current_version: current.clone(),
-        latest_version: current,
-        update_available: false,
-        release_notes: None,
+        current_version: current,
+        latest_version: latest,
+        update_available,
+        release_notes,
     })
 }
 

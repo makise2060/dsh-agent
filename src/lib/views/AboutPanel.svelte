@@ -11,16 +11,19 @@
 
   let appUpdate: UpdateInfo | null = null;
   let checking = false;
+  let checkError: string | null = null;
   let logsDir: string | null = null;
 
   async function handleCheckUpdate() {
     checking = true;
+    checkError = null;
     try {
       appUpdate = await checkAppUpdate();
       if (appUpdate?.update_available) {
         await openUrl(`${RELEASES_URL}/latest`);
       }
     } catch (e) {
+      checkError = String(e);
       console.error(e);
     } finally {
       checking = false;
@@ -115,10 +118,21 @@
     <!-- Update status -->
     {#if checking}
       <div class="text-center text-xs text-gray-400 dark:text-gray-500">正在检查最新版本...</div>
+    {:else if checkError}
+      <div class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4 text-center">
+        <p class="text-sm font-medium text-red-700 dark:text-red-400">检查更新失败</p>
+        <p class="mt-1 text-xs text-red-500 dark:text-red-400 font-mono break-all">{checkError}</p>
+      </div>
     {:else if appUpdate?.update_available}
       <div class="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 p-4 text-center">
         <p class="text-sm font-medium text-orange-700 dark:text-orange-400">发现新版本 v{appUpdate.latest_version}</p>
         <p class="mt-1 text-xs text-orange-600 dark:text-orange-400">已为你打开下载页面</p>
+        {#if appUpdate.release_notes}
+          <details class="mt-2 text-left">
+            <summary class="cursor-pointer text-xs text-orange-600 dark:text-orange-400 select-none">查看更新内容</summary>
+            <pre class="mt-2 max-h-60 overflow-y-auto whitespace-pre-wrap break-all rounded bg-white/60 dark:bg-black/30 p-2 text-xs text-gray-600 dark:text-gray-300">{appUpdate.release_notes}</pre>
+          </details>
+        {/if}
       </div>
     {:else if appUpdate}
       <div class="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 p-4 text-center">
