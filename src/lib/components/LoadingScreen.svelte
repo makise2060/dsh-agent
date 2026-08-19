@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { onDshStdout, onBootstrapProgress, onBootstrapWarning, type BootstrapProgress } from '$lib/api/tauri';
+  import TerminalLog from '$lib/components/TerminalLog.svelte';
+  import { BOOTSTRAP_STEPS } from '$lib/components/steps';
 
   let logs: string[] = [];
   let progress: BootstrapProgress | null = null;
@@ -8,19 +10,6 @@
   let unlistenStdout: (() => void) | null = null;
   let unlistenProgress: (() => void) | null = null;
   let unlistenWarning: (() => void) | null = null;
-
-  // 9 阶段里程碑（与 Rust 端 Stage 顺序一致）
-  const stages = [
-    { key: 'checkingNode', label: '检查 Node.js 环境' },
-    { key: 'downloadingNode', label: '下载 Node.js 运行时' },
-    { key: 'checkingDsh', label: '检查 dsh 版本' },
-    { key: 'installingDsh', label: '安装 DeepSeek Harness' },
-    { key: 'initProfile', label: '初始化配置' },
-    { key: 'installingPlugins', label: '安装界面插件' },
-    { key: 'verifyingPlugins', label: '校验插件挂载' },
-    { key: 'startingDsh', label: '启动 dsh 服务' },
-    { key: 'waitingReady', label: '等待服务就绪' }
-  ];
 
   // 当前到达的阶段下标（1-based：0 = 还没开始）
   let currentStage = 0;
@@ -38,10 +27,6 @@
 
     unlistenStdout = await onDshStdout((line: string) => {
       logs = [...logs, line];
-      setTimeout(() => {
-        const el = document.getElementById('dsh-log-scroll');
-        if (el) el.scrollTop = el.scrollHeight;
-      }, 0);
     });
 
     unlistenWarning = await onBootstrapWarning((w) => {
@@ -56,79 +41,101 @@
   });
 </script>
 
-<div class="flex h-full flex-col items-center justify-center gap-5 bg-gray-50 dark:bg-gray-900 p-8">
-  <!-- Spinner + Title -->
-  <div class="flex items-center gap-3">
-    <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent"></div>
-    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-      {progress ? progress.label : '正在启动 DeepSeek Harness...'}
-    </span>
-  </div>
+<div class="flex h-full items-center justify-center bg-gray-50 dark:bg-gray-900 p-6">
+  <!-- 整体卡片：左步骤条 + 右详情区 -->
+  <div class="flex max-w-3xl min-h-0 h-full w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+    <!-- 左：纵向步骤条 -->
+    <nav class="w-52 shrink-0 overflow-y-auto border-r border-gray-100 dark:border-gray-800 p-4">
+      <ol class="space-y-1">
+        {#each BOOTSTRAP_STEPS as step, i}
+          <li class="relative flex items-start gap-3 py-1.5">
+            <!-- 连接线 -->
+            {#if i < BOOTSTRAP_STEPS.length - 1}
+              <span
+                class="absolute left-[15px] top-9 bottom-[-6px] w-px {i < currentStage
+                  ? 'bg-green-400 dark:bg-green-600'
+                  : 'bg-gray-200 dark:bg-gray-700'}"
+              ></span>
+            {/if}
+            <!-- 图标圈 -->
+            <span
+              class="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors
+              {i < currentStage
+                ? 'bg-green-500 text-white'
+                : i === currentStage
+                  ? 'bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-700 animate-pulse'
+                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-400 dark:text-gray-500'}"
+            >
+              {#if i < currentStage}
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              {:else}
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  {@html step.icon}
+                </svg>
+              {/if}
+            </span>
+            <!-- 标签 -->
+            <div class="min-w-0 pt-1">
+              <p
+                class="text-xs leading-tight
+                {i < currentStage
+                  ? 'font-medium text-green-600 dark:text-green-400'
+                  : i === currentStage
+                    ? 'font-bold text-brand-600 dark:text-brand-400'
+                    : 'text-gray-400 dark:text-gray-500'}"
+              >
+                {step.label}
+              </p>
+            </div>
+          </li>
+        {/each}
+      </ol>
+    </nav>
 
-  <!-- 9 阶段里程碑 -->
-  <div class="w-full max-w-md space-y-2">
-    {#each stages as stage, i}
-      <div class="flex items-start gap-3">
-        <div
-          class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium
-          {i < currentStage ? 'bg-green-500 text-white' : ''}
-          {i === currentStage ? 'bg-brand-500 text-white animate-pulse' : ''}
-          {i > currentStage ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500' : ''}"
-        >
-          {#if i < currentStage}✓{:else}{i + 1}{/if}
-        </div>
-        <div class="flex-1">
-          <p
-            class="text-xs font-medium
-            {i < currentStage ? 'text-green-600 dark:text-green-400' : ''}
-            {i === currentStage ? 'text-brand-600 dark:text-brand-400' : ''}
-            {i > currentStage ? 'text-gray-400 dark:text-gray-500' : ''}"
-          >
-            {stage.label}
-          </p>
-          {#if i === currentStage && progress?.detail}
-            <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500 font-mono">{progress.detail}</p>
+    <!-- 右：当前阶段详情区 -->
+    <section class="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <!-- 大标题 + 步骤计数 -->
+      <div>
+        <div class="flex items-baseline justify-between gap-4">
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            {progress ? progress.label : '正在启动 DeepSeek Harness...'}
+          </h2>
+          {#if progress}
+            <span class="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+              步骤 {progress.index}/{progress.total}
+            </span>
           {/if}
         </div>
-        {#if i === currentStage && progress?.fraction != null}
-          <div class="mt-1 h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <!-- 瞬态详情（下载字节数 / 安装计数等） -->
+        {#if progress?.detail}
+          <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{progress.detail}</p>
+        {/if}
+        <!-- 进度条 -->
+        {#if progress?.fraction != null}
+          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
             <div
-              class="h-full bg-brand-600 transition-all duration-300"
+              class="h-full rounded-full bg-brand-600 transition-all duration-300"
               style="width: {Math.min(100, progress.fraction * 100)}%"
             ></div>
           </div>
         {/if}
       </div>
-    {/each}
-  </div>
 
-  <!-- 非致命警告 -->
-  {#if warnings.length > 0}
-    <div class="w-full max-w-md rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 px-3 py-2">
-      {#each warnings as w}
-        <p class="text-xs text-orange-700 dark:text-orange-400">{w}</p>
-      {/each}
-    </div>
-  {/if}
-
-  <!-- Live log output -->
-  {#if logs.length > 0}
-    <div class="w-full max-w-md">
-      <div class="rounded-lg bg-gray-900 dark:bg-black border border-gray-700 dark:border-gray-800 overflow-hidden">
-        <div class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-700 dark:border-gray-800">
-          <div class="flex gap-1.5">
-            <span class="h-2.5 w-2.5 rounded-full bg-red-400"></span>
-            <span class="h-2.5 w-2.5 rounded-full bg-yellow-400"></span>
-            <span class="h-2.5 w-2.5 rounded-full bg-green-400"></span>
-          </div>
-          <span class="text-xs text-gray-400 ml-1">引导日志</span>
-        </div>
-        <div id="dsh-log-scroll" class="max-h-40 overflow-y-auto p-3 space-y-0.5">
-          {#each logs as log}
-            <pre class="text-xs text-green-400 font-mono whitespace-pre-wrap break-all">{log}</pre>
+      <!-- 非致命警告 -->
+      {#if warnings.length > 0}
+        <div class="rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 px-3 py-2">
+          {#each warnings as w}
+            <p class="text-xs text-orange-700 dark:text-orange-400">{w}</p>
           {/each}
         </div>
+      {/if}
+
+      <!-- 日志面板（深色终端拟物，作为唯一深色焦点） -->
+      <div class="min-h-0">
+        <TerminalLog lines={logs} title="引导日志" maxHeight="max-h-56" />
       </div>
-    </div>
-  {/if}
+    </section>
+  </div>
 </div>
