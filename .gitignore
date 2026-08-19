@@ -30,5 +30,8 @@ Thumbs.db
 # Tools
 .catpaw/
 
+# Docs（文档统一管理于坚果云，不随仓库）
+docs/
+
 # Logs
 *.log

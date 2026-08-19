@@ -196,12 +196,6 @@ dsh 的配置目录，默认为 `~/.dsh/`，可通过环境变量 `DSH_HOME` 自
 └── sessions/                 # 会话数据
 ```
 
-## 技术文档
-
-- [DESIGN.md](./docs/DESIGN.md) — 完整技术设计文档（架构、进程管理、插件市场、安全策略）
-- [DSH-ANALYSIS.md](./docs/DSH-ANALYSIS.md) — dsh 上游产品分析（启动链路、配置层叠、目录结构）
-- [WINDOWS-INSTALLER-REDIRECTION-GUARD.md](./docs/WINDOWS-INSTALLER-REDIRECTION-GUARD.md) — 安装包引导启动失败排查记录
-
 ## 关于
 
 <table>
