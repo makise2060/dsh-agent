@@ -1,3 +1,4 @@
+mod bootstrap;
 mod cmd_ext;
 mod commands;
 mod env;
@@ -129,6 +130,8 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // Bootstrap orchestration
+            bootstrap::start_bootstrap,
             // Process management
             process::start_dsh,
             process::stop_dsh,

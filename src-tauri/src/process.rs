@@ -448,7 +448,7 @@ pub async fn restart_dsh_from_tray(app: &AppHandle) -> Result<ProcessState, Stri
     restart_dsh(state, app.clone()).await
 }
 
-fn chrono_now() -> String {
+pub fn chrono_now() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -677,3 +677,8 @@ pub async fn verify_bundle(app: AppHandle) -> Result<BundleStatus, String> {
     }
     Ok(status)
 }
+
+/// 引导编排用：返回装完自检的警告（Ok(Some) = 能用但有疑点）。
+pub async fn verify_impl_public() -> Result<Option<String>, String> {
+    verify_impl()
+}
