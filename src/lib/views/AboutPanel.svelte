@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { checkAppUpdate, getLogsDir } from '$lib/api/tauri';
+  import { checkAppUpdate, getLogsDir, getNotifyOnDone, setNotifyOnDone } from '$lib/api/tauri';
   import { openPath, openUrl } from '@tauri-apps/plugin-opener';
   import type { UpdateInfo } from '$lib/api/types';
 
@@ -13,6 +13,30 @@
   let checking = false;
   let checkError: string | null = null;
   let logsDir: string | null = null;
+
+  // 任务完成通知开关
+  let notifyOnDone = true;
+  let notifyLoaded = false;
+
+  onMount(async () => {
+    try {
+      notifyOnDone = await getNotifyOnDone();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      notifyLoaded = true;
+    }
+  });
+
+  async function handleToggleNotify() {
+    const next = !notifyOnDone;
+    notifyOnDone = next;
+    try {
+      await setNotifyOnDone(next);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   async function handleCheckUpdate() {
     checking = true;
@@ -106,6 +130,30 @@
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         查看日志
       </button>
+    </div>
+
+    <!-- Settings: task-completion notification -->
+    <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-colors">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-bold text-gray-800 dark:text-gray-200">任务完成通知</h2>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            任务完成时弹出系统通知并闪烁托盘图标（窗口在前台时不打扰）
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={notifyOnDone}
+          aria-label="任务完成通知开关"
+          disabled={!notifyLoaded}
+          on:click={handleToggleNotify}
+          class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 cursor-pointer {notifyOnDone ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-600'}"
+        >
+          <span
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {notifyOnDone ? 'translate-x-6' : 'translate-x-1'}"
+          ></span>
+        </button>
+      </div>
     </div>
 
     <!-- Logs dir hint -->

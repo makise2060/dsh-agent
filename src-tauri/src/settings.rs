@@ -13,6 +13,8 @@ const SETTINGS_FILE: &str = "settings.json";
 struct Settings {
     /// 记住的关闭行为：Some("quit") / Some("tray")。None = 每次询问。
     close_action: Option<String>,
+    /// 任务完成桌面通知开关。None = 默认开启。
+    notify_on_done: Option<bool>,
 }
 
 fn settings_path(app: &AppHandle) -> Option<PathBuf> {
@@ -64,5 +66,16 @@ pub fn set_close_action(app: &AppHandle, action: &str) {
     } else {
         settings.close_action = Some(action.to_string());
     }
+    save(app, &settings);
+}
+
+/// 任务完成通知开关（默认开启）。
+pub fn get_notify_on_done(app: &AppHandle) -> bool {
+    load(app).notify_on_done.unwrap_or(true)
+}
+
+pub fn set_notify_on_done(app: &AppHandle, enabled: bool) {
+    let mut settings = load(app);
+    settings.notify_on_done = Some(enabled);
     save(app, &settings);
 }

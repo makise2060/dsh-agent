@@ -69,6 +69,16 @@ export async function getCloseAction(): Promise<string | null> {
   return invoke<string | null>('get_close_action');
 }
 
+// ── Task-completion notification ───────────────────────────────
+
+export async function getNotifyOnDone(): Promise<boolean> {
+  return invoke<boolean>('get_notify_on_done');
+}
+
+export async function setNotifyOnDone(enabled: boolean): Promise<void> {
+  return invoke('set_notify_on_done', { enabled });
+}
+
 // ── Plugin Market ────────────────────────────────────────────────
 
 export async function searchPlugins(

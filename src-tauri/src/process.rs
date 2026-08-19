@@ -126,6 +126,12 @@ pub async fn start_dsh(
         match start_dsh_once(&state, &app).await {
             Ok(running) => {
                 update_state(&state, running.clone(), &app).await;
+                // 启动成功后挂上任务完成监视器（轮询 /api/pet/state）。
+                // 每次成功启动都新起一个，旧监视器检测到地址变化会自动退出。
+                if let Some(url) = running.url.clone() {
+                    let enabled = app.state::<crate::watcher::NotifyEnabled>().inner().clone();
+                    crate::watcher::spawn(app.clone(), url, enabled);
+                }
                 return Ok(running);
             }
             Err(e) => {

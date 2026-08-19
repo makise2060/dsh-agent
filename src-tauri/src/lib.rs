@@ -9,6 +9,7 @@ mod settings;
 mod state;
 mod tray;
 mod version;
+mod watcher;
 
 use state::AppState;
 use tauri::{Emitter, Manager};
@@ -66,12 +67,19 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(AppState::default())
+        .manage(watcher::NotifyEnabled::default())
         .setup(|app| {
             // 托盘：关闭主窗口后应用驻留托盘，dsh 子进程保持运行
             if let Err(e) = tray::create(app.handle()) {
                 log::error!("创建系统托盘失败: {}", e);
             }
+
+            // 通知开关初值从 settings 灌入 —— managed state 的 Default 是
+            // false，不读一次配置的话，用户上次开着的通知会在重启后静默失效
+            app.state::<watcher::NotifyEnabled>()
+                .set(settings::get_notify_on_done(app.handle()));
 
             // 防白屏的另一半：主窗口是 visible:false（见 tauri.conf.json），
             // 由前端首帧渲染后 show()。若前端坏了（构建损坏、资源缺失）永远
@@ -91,6 +99,14 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // 用户把主窗口切回前台（Alt+Tab / 点任务栏），托盘不用再闪。
+            if let tauri::WindowEvent::Focused(true) = event {
+                if window.label() == "main" {
+                    tray::stop_blink();
+                }
+                return;
+            }
+
             let tauri::WindowEvent::CloseRequested { api, .. } = event else {
                 return;
             };
@@ -137,6 +153,9 @@ pub fn run() {
             commands::resolve_close,
             commands::get_close_action,
             commands::set_close_action,
+            // Task-completion notification
+            commands::get_notify_on_done,
+            commands::set_notify_on_done,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
