@@ -27,5 +27,8 @@ Thumbs.db
 .env
 .env.local
 
+# Tools
+.catpaw/
+
 # Logs
 *.log
