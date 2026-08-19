@@ -15,6 +15,11 @@ export async function startDsh(): Promise<ProcessState> {
   return invoke<ProcessState>('start_dsh');
 }
 
+/** 引导编排：检测/下载 Node → 装 dsh → 装插件 → 启动 dsh，进度走 bootstrap:progress 事件 */
+export async function startBootstrap(): Promise<void> {
+  return invoke('start_bootstrap');
+}
+
 export async function stopDsh(): Promise<void> {
   return invoke('stop_dsh');
 }
@@ -128,6 +133,33 @@ export async function verifyBundle(): Promise<BundleStatus> {
 }
 
 // ── Event Listeners ─────────────────────────────────────────────
+
+/** 引导进度事件（stage/label/detail/fraction/index/total/transient） */
+export interface BootstrapProgress {
+  stage: string;
+  label: string;
+  detail: string | null;
+  fraction: number | null;
+  index: number;
+  total: number;
+  transient: boolean;
+}
+
+export function onBootstrapProgress(cb: (p: BootstrapProgress) => void): Promise<UnlistenFn> {
+  return listen<BootstrapProgress>('bootstrap:progress', (e) => cb(e.payload));
+}
+
+export function onBootstrapReady(cb: (payload: { url: string }) => void): Promise<UnlistenFn> {
+  return listen<{ url: string }>('bootstrap:ready', (e) => cb(e.payload));
+}
+
+export function onBootstrapFailed(cb: (message: string) => void): Promise<UnlistenFn> {
+  return listen<string>('bootstrap:failed', (e) => cb(e.payload));
+}
+
+export function onBootstrapWarning(cb: (payload: { message: string }) => void): Promise<UnlistenFn> {
+  return listen<{ message: string }>('bootstrap:warning', (e) => cb(e.payload));
+}
 
 export function onProcessStateChanged(cb: (state: ProcessState) => void): Promise<UnlistenFn> {
   return listen<ProcessState>('process-state-changed', (e) => cb(e.payload));
