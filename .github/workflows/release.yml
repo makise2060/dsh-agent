@@ -111,5 +111,42 @@ jobs:
           tag_name: ${{ steps.vars.outputs.tag }}
           draft: false
           prerelease: false
+          body: |
+            # DSH Agent ${{ steps.vars.outputs.tag }}
+
+            > DeepSeek Harness 桌面客户端 — 一键启动 `dsh web`，集成环境自检、版本更新、插件市场。
+
+            ---
+
+            ### ⬇️ Download / 下载
+
+            <div align="left">
+
+            | **OS / 系统** | **Requirements / 版本要求** | **Direct Link / 点击直链下载** |
+            |:---:|:---|:---|
+            | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" alt="Windows" width="28"/> | Windows 10+<br>*(WebView2 Runtime)* | <a href="https://github.com/makise2060/dsh-agent/releases/download/${{ steps.vars.outputs.tag }}/DSH-Agent_${{ steps.vars.outputs.version }}_x64-setup.exe"><img src="https://img.shields.io/badge/Setup-x64-0078D7?logo=windows&logoColor=white&style=flat-square&labelColor=222222"></a> |
+
+            </div>
+
+            > 自 v1.2.1 起专注 Windows 平台，不再提供 macOS / Linux 安装包。
+
+            ---
+
+            ### 🚀 本次更新
+
+            ${{ steps.changelog.outputs.notes }}
+
+            ---
+
+            ### 📋 前置要求
+
+            - **Node.js ≥ 22**（dsh 运行时依赖）
+            - **dsh**：`npm install -g @deepseek-ai/dsh`（App 内也可一键安装）
+
+            > Windows 用户需安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)（Win11 已内置）。
+
+            ### 🐛 Feedback / 问题反馈
+
+            **Bug Report**: [Click Here](https://github.com/makise2060/dsh-agent/issues/new)
           files: |
             src-tauri/DSH-Agent_*-setup.exe
