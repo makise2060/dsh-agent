@@ -175,4 +175,55 @@ pnpm tauri build
 
 ## 配置
 
-（配置文件与用户数据说明）
+### Tauri 配置 (`src-tauri/tauri.conf.json`)
+
+关键配置项：
+- **窗口**：1280×800，最小 900×600，可调整大小
+- **CSP**：允许 `127.0.0.1:*` 的 connect/frame（dsh web）、`api.github.com`（插件搜索）、`registry.npmjs.org`（版本检查）、`avatars.githubusercontent.com`（头像图片）
+- **WebView2**：缺失时自动下载 Bootstrapper 安装
+
+### DSH_HOME
+
+dsh 的配置目录，默认为 `~/.dsh/`，可通过环境变量 `DSH_HOME` 自定义：
+
+```
+~/.dsh/
+├── profiles/
+│   └── web/
+│       ├── package.json      # 插件依赖
+│       ├── node_modules/     # 已安装插件
+│       └── cordis.patch.yml   # 插件激活配置
+└── sessions/                 # 会话数据
+```
+
+## 技术文档
+
+- [DESIGN.md](./docs/DESIGN.md) — 完整技术设计文档（架构、进程管理、插件市场、安全策略）
+- [DSH-ANALYSIS.md](./docs/DSH-ANALYSIS.md) — dsh 上游产品分析（启动链路、配置层叠、目录结构）
+- [WINDOWS-INSTALLER-REDIRECTION-GUARD.md](./docs/WINDOWS-INSTALLER-REDIRECTION-GUARD.md) — 安装包引导启动失败排查记录
+
+## 关于
+
+<table>
+  <tr>
+    <td width="120" align="center">
+      <img src="https://avatars.githubusercontent.com/u/263516586?v=4" width="100" height="100" style="border-radius: 50%;" alt="makise2060" />
+    </td>
+    <td>
+      <h3>DrPepper (<a href="https://github.com/makise2060">@makise2060</a>)</h3>
+      <p>后端攻城狮 · With the assistance of Dsh</p>
+      <p>Makise(Sometimes) — an ordinary backend engineer navigating the AI tide. Optimistic, rational, and full of hope, building wonders in everyday life.</p>
+      <p>
+        <a href="https://github.com/makise2060"><img src="https://img.shields.io/badge/GitHub-makise2060-181717?logo=github&logoColor=white" alt="GitHub" /></a>
+      </p>
+    </td>
+  </tr>
+</table>
+
+## 致谢
+
+本项目的诞生离不开 [Linux.do](https://linux.do/) 社区的启发。感谢社区中分享 DeepSeek Harness 使用经验、推荐 Tauri 方案、讨论进程管理细节的各位大佬——是你们的真诚、友善、团结、专业让开源社区充满活力。
+
+## License
+
+MIT
