@@ -75,3 +75,10 @@ export interface InstalledPlugin {
   version: string;
   path: string | null;
 }
+
+export interface BundleStatus {
+  status: 'not_installed' | 'installed' | 'needs_repair';
+  installed_version: string | null;
+  expected_version: string;
+  warning: string | null;
+}

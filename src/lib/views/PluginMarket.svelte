@@ -5,9 +5,21 @@
     listInstalledPlugins,
     installPlugin,
     removePlugin,
-    onPluginInstallProgress
+    onPluginInstallProgress,
+    checkBundleStatus,
+    installBundle,
+    verifyBundle,
+    BUNDLE_PACKAGE
   } from '$lib/api/tauri';
-  import { marketRepos, installedPackages, pluginLoading, installingPackage } from '$lib/stores/plugins';
+  import {
+    marketRepos,
+    installedPackages,
+    pluginLoading,
+    installingPackage,
+    bundleStatus,
+    bundleInstalling,
+    bundleMessage
+  } from '$lib/stores/plugins';
   import { currentRoute } from '$lib/stores/app';
   import type { PluginRepo } from '$lib/api/types';
 
@@ -21,10 +33,24 @@
 
   onMount(() => {
     loadInstalled();
+    loadBundleStatus();
     let unlisten: (() => void) | undefined;
 
     onPluginInstallProgress((p) => {
-      if (p.stage === 'done') {
+      if (p.package === BUNDLE_PACKAGE) {
+        // 全家桶事件：驱动卡片状态与进度
+        if (p.stage === 'starting') {
+          bundleInstalling.set(true);
+          bundleMessage.set(p.message);
+        } else if (p.stage === 'progress') {
+          bundleMessage.set(p.message);
+        } else if (p.stage === 'done' || p.stage === 'error') {
+          bundleInstalling.set(false);
+          bundleMessage.set(null);
+          loadBundleStatus();
+          loadInstalled();
+        }
+      } else if (p.stage === 'done') {
         installingPackage.set(null);
         loadInstalled();
         loadPlugins();
@@ -76,6 +102,14 @@
     }
   }
 
+  async function loadBundleStatus() {
+    try {
+      bundleStatus.set(await checkBundleStatus());
+    } catch (e) {
+      console.error('Failed to check bundle status:', e);
+    }
+  }
+
   function isInstalled(repo: PluginRepo): boolean {
     return $installedPackages.some((p) => repo.full_name.includes(p.name));
   }
@@ -98,6 +132,28 @@
       await loadInstalled();
     } catch (e) {
       console.error('Remove failed:', e);
+    }
+  }
+
+  async function handleInstallBundle() {
+    bundleInstalling.set(true);
+    bundleMessage.set('正在安装界面插件全家桶…');
+    try {
+      bundleStatus.set(await installBundle());
+      loadInstalled();
+    } catch (e) {
+      console.error('Bundle install failed:', e);
+      bundleMessage.set(String(e));
+    } finally {
+      bundleInstalling.set(false);
+    }
+  }
+
+  async function handleVerifyBundle() {
+    try {
+      bundleStatus.set(await verifyBundle());
+    } catch (e) {
+      console.error('Bundle verify failed:', e);
     }
   }
 
@@ -147,6 +203,89 @@
 
   <!-- Plugin list -->
   <div class="flex-1 overflow-y-auto p-4">
+    <!-- 界面插件全家桶卡片 -->
+    <div class="mx-auto mb-4 max-w-3xl">
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-colors">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200">界面插件全家桶</h3>
+              <span
+                class="rounded-full px-2 py-0.5 text-[10px] font-medium {$bundleStatus?.status === 'installed'
+                  ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400'
+                  : $bundleStatus?.status === 'needs_repair'
+                    ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
+              >
+                {$bundleStatus?.status === 'installed'
+                  ? '已安装'
+                  : $bundleStatus?.status === 'needs_repair'
+                    ? '需修复'
+                    : '未安装'}
+              </span>
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              一键安装鲸鱼娘、任务看板、皮肤中心、Git 图谱、右侧面板等整套界面插件
+              {#if $bundleStatus?.installed_version || $bundleStatus?.expected_version}
+                <span class="text-gray-400 dark:text-gray-500">
+                  （{ $bundleStatus?.installed_version ? `当前 v${$bundleStatus.installed_version}` : `将安装 v${$bundleStatus.expected_version}` }）
+                </span>
+              {/if}
+            </p>
+            {#if $bundleStatus?.warning}
+              <p class="mt-2 rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 px-2 py-1.5 text-xs text-orange-700 dark:text-orange-400">
+                {$bundleStatus.warning}
+              </p>
+            {/if}
+            {#if $bundleInstalling}
+              <div class="mt-3 space-y-1">
+                <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div class="h-full bg-brand-600 transition-all duration-300"></div>
+                </div>
+                {#if $bundleMessage}
+                  <p class="text-xs text-gray-500 dark:text-gray-400 font-mono break-all">{$bundleMessage}</p>
+                {/if}
+              </div>
+            {/if}
+          </div>
+          <div class="shrink-0">
+            {#if $bundleInstalling}
+              <span class="text-xs text-gray-400 dark:text-gray-500">安装中...</span>
+            {:else if $bundleStatus?.status === 'not_installed'}
+              <button
+                class="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+                on:click={handleInstallBundle}
+              >
+                一键安装
+              </button>
+            {:else if $bundleStatus?.status === 'installed'}
+              <div class="flex items-center gap-2">
+                <button
+                  class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  on:click={handleVerifyBundle}
+                >
+                  自检
+                </button>
+                <button
+                  class="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  on:click={handleInstallBundle}
+                >
+                  重装
+                </button>
+              </div>
+            {:else}
+              <button
+                class="rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
+                on:click={handleInstallBundle}
+              >
+                修复安装
+              </button>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </div>
+
     {#if $pluginLoading && $marketRepos.length === 0}
       <div class="flex items-center justify-center py-12">
         <div class="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent"></div>

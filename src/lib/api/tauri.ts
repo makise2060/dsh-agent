@@ -5,7 +5,8 @@ import type {
   EnvState,
   UpdateInfo,
   PluginSearchResult,
-  InstalledPlugin
+  InstalledPlugin,
+  BundleStatus
 } from './types';
 
 // ── Process Management ──────────────────────────────────────────
@@ -109,6 +110,23 @@ export async function activatePlugin(pluginId: string, pluginName: string): Prom
   return invoke('activate_plugin', { pluginId, pluginName });
 }
 
+// ── Plugin Bundle (dsh-web-ui all-in-one) ───────────────────────
+
+/** 界面插件全家桶聚合包名 */
+export const BUNDLE_PACKAGE = '@linxin666/dsh-web-ui-all';
+
+export async function checkBundleStatus(): Promise<BundleStatus> {
+  return invoke<BundleStatus>('check_bundle_status');
+}
+
+export async function installBundle(): Promise<BundleStatus> {
+  return invoke<BundleStatus>('install_bundle');
+}
+
+export async function verifyBundle(): Promise<BundleStatus> {
+  return invoke<BundleStatus>('verify_bundle');
+}
+
 // ── Event Listeners ─────────────────────────────────────────────
 
 export function onProcessStateChanged(cb: (state: ProcessState) => void): Promise<UnlistenFn> {
@@ -128,9 +146,9 @@ export function onInstallProgress(
 }
 
 export function onPluginInstallProgress(
-  cb: (p: { package: string; stage: string; message: string }) => void
+  cb: (p: { package: string; stage: string; message: string; percent?: number }) => void
 ): Promise<UnlistenFn> {
-  return listen<{ package: string; stage: string; message: string }>(
+  return listen<{ package: string; stage: string; message: string; percent?: number }>(
     'plugin-install-progress',
     (e) => cb(e.payload)
   );

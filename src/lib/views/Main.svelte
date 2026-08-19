@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { processState } from '$lib/stores/app';
-  import { startDsh, getDshStatus, onProcessStateChanged } from '$lib/api/tauri';
+  import { bundleStatus } from '$lib/stores/plugins';
+  import { startDsh, getDshStatus, onProcessStateChanged, checkBundleStatus } from '$lib/api/tauri';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 
   let loading = true;
@@ -9,6 +10,12 @@
 
   onMount(() => {
     let unlisten: (() => void) | undefined;
+
+    // 启动时静默检测界面插件全家桶状态（纯文件读取，不自动安装），
+    // 插件市场页会基于此展示状态徽标
+    checkBundleStatus()
+      .then((s) => bundleStatus.set(s))
+      .catch(() => {});
 
     (async () => {
       try {
