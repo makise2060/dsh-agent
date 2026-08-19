@@ -44,17 +44,18 @@
 <div class="flex h-screen flex-col bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors">
   <TopNav />
   <main class="flex-1 overflow-hidden relative">
-    <!-- 所有视图同时挂载，通过 display 切换可见性，避免重新挂载导致 iframe 重建/闪屏 -->
-    <div class="absolute inset-0 {$currentRoute === 'main' ? 'block' : 'hidden'}">
+    <!-- 所有视图同时挂载，通过 opacity 切换可见性，避免重新挂载导致 iframe 重建/闪屏；
+         同时加 transition 让切换有淡入淡出动画（display 切换无法过渡） -->
+    <div class="absolute inset-0 transition-opacity duration-200 {$currentRoute === 'main' ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
       <Main />
     </div>
-    <div class="absolute inset-0 {$currentRoute === 'env' ? 'block' : 'hidden'}">
+    <div class="absolute inset-0 transition-opacity duration-200 {$currentRoute === 'env' ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
       <EnvPanel />
     </div>
-    <div class="absolute inset-0 {$currentRoute === 'about' ? 'block' : 'hidden'}">
+    <div class="absolute inset-0 transition-opacity duration-200 {$currentRoute === 'about' ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
       <AboutPanel />
     </div>
-    <div class="absolute inset-0 {$currentRoute === 'plugins' ? 'block' : 'hidden'}">
+    <div class="absolute inset-0 transition-opacity duration-200 {$currentRoute === 'plugins' ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
       <PluginMarket />
     </div>
   </main>
