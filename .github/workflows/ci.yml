@@ -10,9 +10,10 @@ on:
   pull_request:
     branches: [main]
 
+# 专注 Windows：自 v1.2.1 起仅在 Windows 上做构建检查
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -40,11 +41,7 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
       - name: Check Rust build
         working-directory: src-tauri
+        shell: pwsh
         run: cargo check

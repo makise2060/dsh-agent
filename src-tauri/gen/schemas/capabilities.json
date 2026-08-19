@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Default capabilities for DSH Agent","local":true,"windows":["main"],"permissions":["core:default","opener:default","opener:allow-open-path"]}}
+{"default":{"identifier":"default","description":"Default capabilities for DSH Agent","local":true,"windows":["main"],"permissions":["core:default","core:window:allow-show","core:window:allow-hide","opener:default","opener:allow-open-path"]}}

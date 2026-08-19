@@ -58,6 +58,17 @@ export async function getLogsDir(): Promise<string> {
   return invoke<string>('get_logs_dir');
 }
 
+// ── Close Behavior ──────────────────────────────────────────────
+
+/** 关闭确认框三选：quit / tray / cancel。remember=true 时记住（cancel 永不记住） */
+export async function resolveClose(action: string, remember: boolean): Promise<void> {
+  return invoke('resolve_close', { action, remember });
+}
+
+export async function getCloseAction(): Promise<string | null> {
+  return invoke<string | null>('get_close_action');
+}
+
 // ── Plugin Market ────────────────────────────────────────────────
 
 export async function searchPlugins(

@@ -2,7 +2,7 @@ use crate::cmd_ext::hidden_command;
 use crate::state::{AppState, ProcessState};
 use regex::Regex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::time::timeout;
 
@@ -10,6 +10,39 @@ const DSH_START_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_START_ATTEMPTS: u32 = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(5);
 static URL_REGEX: &str = r"^dsh web:\s+http://127\.0\.0\.1:(\d+)";
+
+/// 设置写锁清理的安全阀：正常写入持锁毫秒级，超过 30s 的锁必然是残留。
+const LOCK_STALE_AFTER: Duration = Duration::from_secs(30);
+
+/// 清掉 dsh 的设置写锁残留（~/.dsh/settings.yaml.lock）。
+///
+/// dsh 崩溃或被强杀后可能留下设置写锁，导致「所有设置无法保存、主题被弹回」。
+/// `older_than` 是安全阀，防止误删另一个 dsh 正在用的锁：
+/// - 刚亲手杀完 dsh 传 `Duration::ZERO` —— 那一刻的锁必然是它留下的；
+/// - 启动前的例行清理传 `LOCK_STALE_AFTER`。
+fn clear_settings_lock(older_than: Duration) {
+    let lock = crate::env::get_dsh_home().join("settings.yaml.lock");
+    let Ok(meta) = std::fs::metadata(&lock) else {
+        return; // 没有锁是常态，静默返回
+    };
+    let age = meta.modified().ok().and_then(|t| t.elapsed().ok());
+    // 读不出修改时间就当它过期 —— 宁可清掉，也不要让用户卡在「设置存不了」
+    let stale = age.map_or(true, |a| a > older_than);
+    if !stale {
+        log::info!("settings.yaml.lock 还很新，可能有别的 dsh 在写，不动它");
+        return;
+    }
+    // 有的实现用目录当锁，两种都收拾
+    let removed = if meta.is_dir() {
+        std::fs::remove_dir_all(&lock)
+    } else {
+        std::fs::remove_file(&lock)
+    };
+    match removed {
+        Ok(()) => log::info!("清掉了残留的设置写锁：{}", lock.display()),
+        Err(e) => log::warn!("清理设置写锁失败：{}: {}", lock.display(), e),
+    }
+}
 
 async fn update_state(state: &State<'_, AppState>, new_state: ProcessState, app: &AppHandle) {
     {
@@ -77,6 +110,10 @@ pub async fn start_dsh(
     // once dsh has already failed — so capture it up front.
     #[cfg(target_os = "windows")]
     crate::cmd_ext::log_launch_context();
+
+    // dsh 崩溃/被强杀后可能残留设置写锁（settings.yaml.lock），
+    // 导致设置无法保存。启动前例行清理超过 30s 的锁。
+    clear_settings_lock(LOCK_STALE_AFTER);
 
     // Retry is a safety net for genuinely transient failures (npm cache lock,
     // a port grabbed between bind and print). It does NOT rescue the
@@ -361,6 +398,9 @@ pub async fn stop_dsh(state: State<'_, AppState>, app: AppHandle) -> Result<(), 
     }
     state.set_dsh_pid(0);
 
+    // 刚亲手杀完 dsh，此刻若有锁必然是它留下的，直接清掉（Duration::ZERO）
+    clear_settings_lock(Duration::ZERO);
+
     // Clear child handle
     {
         let mut c = state.child.lock().await;
@@ -394,6 +434,12 @@ pub async fn restart_dsh(
     // Small delay to ensure port is released
     tokio::time::sleep(Duration::from_secs(1)).await;
     start_dsh(state, app).await
+}
+
+/// 托盘/前端无 State 参数时调用：从 AppHandle 取出 State 再重启。
+pub async fn restart_dsh_from_tray(app: &AppHandle) -> Result<ProcessState, String> {
+    let state = app.state::<AppState>();
+    restart_dsh(state, app.clone()).await
 }
 
 fn chrono_now() -> String {
