@@ -329,7 +329,7 @@ pub async fn activate_plugin(plugin_id: String, plugin_name: String) -> Result<(
 }
 
 /// Get installed package names from the web profile's package.json dependencies
-async fn get_installed_package_names() -> Result<Vec<String>, String> {
+pub(crate) async fn get_installed_package_names() -> Result<Vec<String>, String> {
     let home = get_dsh_home();
     let pkg_json_path = home.join("profiles").join("web").join("package.json");
 

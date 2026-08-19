@@ -4,6 +4,7 @@ mod env;
 mod installer;
 mod logger;
 mod plugins;
+mod plugins_bundle;
 mod process;
 mod settings;
 mod state;
@@ -147,6 +148,10 @@ pub fn run() {
             plugins::install_plugin,
             plugins::remove_plugin,
             plugins::activate_plugin,
+            // Plugin bundle (dsh-web-ui all-in-one)
+            plugins_bundle::check_bundle_status,
+            plugins_bundle::install_bundle,
+            plugins_bundle::verify_bundle,
             // Logging
             logger::get_logs_dir,
             // Close behavior
