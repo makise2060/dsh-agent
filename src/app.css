@@ -8,7 +8,48 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  /* 主流现代化字体方案：Segoe UI（Win 拉丁）+ 微软雅黑 UI（Win 中文界面默认）+
+     苹方（macOS）+ 思源黑体（兜底）。刻意不写宋体/SimSun——小字号下观感极差。 */
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'PingFang SC',
+    'HarmonyOS Sans SC',
+    'MiSans',
+    'Noto Sans SC',
+    sans-serif;
+}
+
+/* 等宽字体也指定现代中文字体，避免日志/路径等 font-mono 场景中文回退宋体 */
+.font-mono {
+  font-family:
+    'Cascadia Mono',
+    'JetBrains Mono',
+    Consolas,
+    'SF Mono',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    monospace;
+}
+
+/* pre/code 默认走浏览器 monospace 栈（Tailwind preflight 里没有中文字体），
+   中文会回退到宋体/点阵。统一覆盖为现代等宽 + 雅黑兜底。 */
+pre,
+code,
+kbd,
+samp {
+  font-family:
+    'Cascadia Mono',
+    'JetBrains Mono',
+    Consolas,
+    'SF Mono',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'PingFang SC',
+    monospace;
 }
 
 /* Light mode scrollbar */
