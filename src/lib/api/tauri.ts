@@ -85,6 +85,18 @@ export async function setNotifyOnDone(enabled: boolean): Promise<void> {
   return invoke('set_notify_on_done', { enabled });
 }
 
+// ── Theme sync ─────────────────────────────────────────────────
+
+/** 读 dsh 外观偏好：light / dark / system */
+export async function getThemePreference(): Promise<string> {
+  return invoke<string>('get_theme_preference');
+}
+
+/** 写 dsh 外观偏好（light / dark / system），写回 settings.yaml */
+export async function setThemePreference(preference: string): Promise<string> {
+  return invoke<string>('set_theme_preference', { preference });
+}
+
 // ── Plugin Market ────────────────────────────────────────────────
 
 export async function searchPlugins(

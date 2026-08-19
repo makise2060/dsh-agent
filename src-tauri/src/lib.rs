@@ -9,6 +9,7 @@ mod plugins_bundle;
 mod process;
 mod settings;
 mod state;
+mod theme;
 mod tray;
 mod version;
 mod watcher;
@@ -164,6 +165,9 @@ pub fn run() {
             // Task-completion notification
             commands::get_notify_on_done,
             commands::set_notify_on_done,
+            // Theme sync
+            theme::get_theme_preference,
+            theme::set_theme_preference,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
