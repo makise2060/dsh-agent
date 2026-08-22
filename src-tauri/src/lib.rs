@@ -7,6 +7,7 @@ mod logger;
 mod plugins;
 mod plugins_bundle;
 mod process;
+mod profile_repair;
 mod settings;
 mod state;
 mod theme;

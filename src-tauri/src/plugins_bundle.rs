@@ -29,7 +29,7 @@ pub const BUNDLE: &str = "@linxin666/dsh-web-ui-all";
 pub const BUNDLE_VERSION: &str = "0.2.1";
 
 /// 自检要确认落地的核心子包。
-const REQUIRED_PACKAGES: &[&str] = &[
+pub(crate) const REQUIRED_PACKAGES: &[&str] = &[
     "@linxin666/dsh-pet",
     "@linxin666/dsh-client-ui-task-board",
     "@linxin666/dsh-client-ui-skin-center",
@@ -48,7 +48,7 @@ const ALLOW_BUILDS: &[(&str, bool)] = &[
     ("ssh2", true),
 ];
 
-const PROFILE: &str = "web";
+pub(crate) const PROFILE: &str = "web";
 
 /// 硬编码快照：dsh 0.1.0-rc.6 scaffold 的逐字抄本，只含上游自己的键。
 /// 只在 dsh 初始化没产出文件时兜底；所需键全走增量补丁。
@@ -103,7 +103,7 @@ fn workspace_yaml() -> PathBuf {
     profile_dir().join("pnpm-workspace.yaml")
 }
 
-fn node_modules_dir() -> PathBuf {
+pub(crate) fn node_modules_dir() -> PathBuf {
     profile_dir().join("node_modules")
 }
 
@@ -135,7 +135,7 @@ fn in_pnpm_store(modules: &Path, pkg: &str) -> Option<PathBuf> {
 
 /// 定位一个包，顶层找不到就去 `.pnpm/` 里找。
 /// 只用于读版本号这类信息性用途，不能拿来判断插件可不可用。
-fn resolve_package(modules: &Path, pkg: &str) -> Option<PathBuf> {
+pub(crate) fn resolve_package(modules: &Path, pkg: &str) -> Option<PathBuf> {
     let direct = top_level(modules, pkg);
     if direct.join("package.json").is_file() {
         return Some(direct);
@@ -173,7 +173,7 @@ fn package_is_usable(modules: &Path, pkg: &str) -> bool {
 
 /// 聚合包是否真的挂到了 profile 上（坑 3）。
 /// `dependencies` 是 pnpm 写的，`dsh.profile.bundles` 才是 dsh 写的挂载凭据。
-fn is_mounted() -> bool {
+pub(crate) fn is_mounted() -> bool {
     let Ok(text) = std::fs::read_to_string(profile_package_json()) else {
         return false;
     };

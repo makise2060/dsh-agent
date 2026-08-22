@@ -336,6 +336,19 @@ async fn ensure_plugins(app: &AppHandle, reporter: &Reporter) -> Result<(), Stri
     }
 
     reporter.stage(Stage::VerifyingPlugins);
+
+    // 聚合包就位后先摘重复挂载：0.2.x 起聚合包内置 better-sidebar，从旧版
+    // 升上来的 profile 里单独装过的会跟它撞 `/sidebar/api` 路由，dsh 直接
+    // 起不来。此刻清掉，下面的首次启动就是干净的。
+    match crate::profile_repair::preflight_cleanup() {
+        Ok(removed) if !removed.is_empty() => reporter.warn(format!(
+            "检测到与界面插件全家桶重复挂载的插件（{}），已自动清理。",
+            removed.join("、")
+        )),
+        Ok(_) => {}
+        Err(e) => log::warn!("[bootstrap] 插件挂载预检失败（不阻断启动）：{e}"),
+    }
+
     match crate::plugins_bundle::verify_impl_public().await {
         Ok(Some(warning)) => reporter.warn(warning),
         Ok(None) => reporter.detail(Stage::VerifyingPlugins, "插件校验通过"),

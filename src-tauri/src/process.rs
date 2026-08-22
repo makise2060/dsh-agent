@@ -141,6 +141,18 @@ pub async fn start_dsh(
                     MAX_START_ATTEMPTS,
                     e
                 );
+                // 插件重复挂载（duplicate prefix route）是持久性配置错误，
+                // 盲目重试注定三次全灭（真机案例：聚合包内置的 better-sidebar
+                // 撞上存量独立安装）。重试前先摘除多余挂载，给下一轮一条活路。
+                if e.contains("duplicate prefix route") {
+                    match crate::profile_repair::repair_duplicate_route_failure(&e) {
+                        Ok(Some(pkg)) => log::info!(
+                            "[repair] 已摘除重复挂载的 {pkg}，下一轮重试将使用干净挂载"
+                        ),
+                        Ok(None) => {}
+                        Err(re) => log::warn!("[repair] 自动清理重复挂载失败：{re}"),
+                    }
+                }
                 last_err = e;
                 if attempt < MAX_START_ATTEMPTS {
                     // Keep the loading screen informed — without this the UI
